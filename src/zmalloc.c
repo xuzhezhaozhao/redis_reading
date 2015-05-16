@@ -112,6 +112,7 @@ static size_t used_memory = 0;
 static int zmalloc_thread_safe = 0;
 pthread_mutex_t used_memory_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+/* 内存不够情况下的默认错误处理函数 */
 static void zmalloc_default_oom(size_t size) {
     fprintf(stderr, "zmalloc: Out of memory trying to allocate %zu bytes\n",
         size);
@@ -119,8 +120,10 @@ static void zmalloc_default_oom(size_t size) {
     abort();
 }
 
+/* 内存不够情况下错误处理函数 */
 static void (*zmalloc_oom_handler)(size_t) = zmalloc_default_oom;
 
+/* TODO */
 void *zmalloc(size_t size) {
     void *ptr = malloc(size+PREFIX_SIZE);
 

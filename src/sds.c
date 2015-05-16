@@ -126,6 +126,7 @@ void sdsclear(sds s) {
  *
  * Note: this does not change the *length* of the sds string as returned
  * by sdslen(), but only the free buffer space we have. */
+/* 相当于确保 free 的大小至少为 addlen, 不够就 realloc */
 sds sdsMakeRoomFor(sds s, size_t addlen) {
     struct sdshdr *sh, *newsh;
     size_t free = sdsavail(s);
@@ -369,6 +370,9 @@ sds sdsfromlonglong(long long value) {
     return sdsnewlen(buf,len);
 }
 
+/*
+ * 函数中对于 buffer 大小和分配的处理方法有点意思.
+ */
 /* Like sdscatprintf() but gets va_list instead of being variadic. */
 sds sdscatvprintf(sds s, const char *fmt, va_list ap) {
     va_list cpy;

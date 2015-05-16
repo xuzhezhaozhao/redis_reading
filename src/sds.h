@@ -36,10 +36,17 @@
 #include <sys/types.h>
 #include <stdarg.h>
 
+/* 之所以定义 sds 是有原因的, 因为 sds 类型的指针保证了其指向的数据是
+ * 与 sdshdr 结构一起分配的, 可以很容易的获得其指向的数据长度 */
 typedef char *sds;
 
+/* 
+ * 小技巧, 数据分配在这个结构体之后, buf 为其地址, 这个结构体中的 buf 域
+ * 实际上是没有占用内存的 
+ */
 struct sdshdr {
     unsigned int len;
+	/* 初始为 0, 保存的是 '真正分配的数据长度 - len', 可以看作 buf 的可用长度 */
     unsigned int free;
     char buf[];
 };

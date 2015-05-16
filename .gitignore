@@ -27,3 +27,6 @@ deps/lua/src/liblua.a
 .prerequisites
 *.dSYM
 *.pyc
+tags
+src/test_xzz.c
+src/a.out
