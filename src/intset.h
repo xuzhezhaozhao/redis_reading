@@ -33,9 +33,17 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+/* 有序的整数集合 */
 typedef struct intset {
+	/* 有三种整数编码方式, 64 bits, 32 bits, 16 bits, 这个域的存储方式为小端,
+	 * 在使用时需要检测是否需要进行大小端转换, 用宏 intrev32ifbe, 域的值就是
+	 * 当前整数编码所用的 bit 数量 */
+	/* 新建时为 16 bits 编码模式 */
     uint32_t encoding;
+	/* 整数个数, 这个域的存储方式也是小端, 在使用时需要检测是否需要进行大小
+	 * 端转换, 用宏 intrev32ifbe */
     uint32_t length;
+	/* 整数按 little endien 方式存储 */
     int8_t contents[];
 } intset;
 
