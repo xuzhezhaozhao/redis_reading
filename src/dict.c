@@ -201,6 +201,8 @@ int dictResize(dict *d)
 }
 
 /* Expand or create the hash table */
+/* 扩大 d->ht[1] 表, 若当前处在 rehash 过程中, 则返回 DICT_ERR, 
+ * 新表大小为大于 size 的最小 power of 2 */
 int dictExpand(dict *d, unsigned long size)
 {
     dictht n; /* the new hash table */
@@ -242,6 +244,8 @@ int dictExpand(dict *d, unsigned long size)
  * guaranteed that this function will rehash even a single bucket, since it
  * will visit at max N*10 empty buckets in total, otherwise the amount of
  * work it does would be unbound and the function may block for a long time. */
+/* 增量 rehash, 不是一次性全部 rehash, 一次最多 rehash n 个非空 buckets,
+ * 最多 10*n 个空 buckets */
 int dictRehash(dict *d, int n) {
     int empty_visits = n*10; /* Max number of empty buckets to visit. */
     if (!dictIsRehashing(d)) return 0;
@@ -264,6 +268,7 @@ int dictRehash(dict *d, int n) {
             nextde = de->next;
             /* Get the index in the new hash table */
             h = dictHashKey(d, de->key) & d->ht[1].sizemask;
+			/* 链入到新的 hash 表相应位置 */
             de->next = d->ht[1].table[h];
             d->ht[1].table[h] = de;
             d->ht[0].used--;
@@ -287,6 +292,7 @@ int dictRehash(dict *d, int n) {
     return 1;
 }
 
+/* 毫秒 since the Epoch */
 long long timeInMilliseconds(void) {
     struct timeval tv;
 
@@ -314,6 +320,7 @@ int dictRehashMilliseconds(dict *d, int ms) {
  * This function is called by common lookup or update operations in the
  * dictionary so that the hash table automatically migrates from H1 to H2
  * while it is actively used. */
+/* 将 rehash 分散在 查询, 更新等操作中 */
 static void _dictRehashStep(dict *d) {
     if (d->iterators == 0) dictRehash(d,1);
 }
@@ -406,6 +413,7 @@ dictEntry *dictReplaceRaw(dict *d, void *key) {
 }
 
 /* Search and remove an element */
+/* nofree 控制是否 free key, val, 待删除的 key 存在返回 DICT_OK, 否则 DICT_ERR */
 static int dictGenericDelete(dict *d, const void *key, int nofree)
 {
     unsigned int h, idx;
@@ -486,6 +494,7 @@ void dictRelease(dict *d)
     zfree(d);
 }
 
+/* 返回 key 对应的 dictEntry, 不存在返回 NULL */
 dictEntry *dictFind(dict *d, const void *key)
 {
     dictEntry *he;
@@ -520,6 +529,7 @@ void *dictFetchValue(dict *d, const void *key) {
  * the fingerprint again when the iterator is released.
  * If the two fingerprints are different it means that the user of the iterator
  * performed forbidden operations against the dictionary while iterating. */
+/* 相当于当前状态的一个标记 */
 long long dictFingerprint(dict *d) {
     long long integers[6], hash = 0;
     int j;
@@ -576,8 +586,10 @@ dictEntry *dictNext(dictIterator *iter)
 {
     while (1) {
         if (iter->entry == NULL) {
+			/* 要么是第一次调用, 要么是一个 bucket (链式) 搜索完成了 */
             dictht *ht = &iter->d->ht[iter->table];
             if (iter->index == -1 && iter->table == 0) {
+				/* 第一次调用 */
                 if (iter->safe)
                     iter->d->iterators++;
                 else
@@ -586,18 +598,24 @@ dictEntry *dictNext(dictIterator *iter)
             iter->index++;
             if (iter->index >= (long) ht->size) {
                 if (dictIsRehashing(iter->d) && iter->table == 0) {
+					/* 处在 rehash, 且当前表为 ht[0], 换 ht[1] */
                     iter->table++;
+					/* ht[1] 从 bucket 开始 */
                     iter->index = 0;
                     ht = &iter->d->ht[1];
                 } else {
+					/* 结束了, 没有元素了  */
                     break;
                 }
             }
+			/* 新的 bucket, 从头开始搜索  */
             iter->entry = ht->table[iter->index];
         } else {
+			/* 当前 bucket 中还有元素, 更新为下一个元素 */
             iter->entry = iter->nextEntry;
         }
         if (iter->entry) {
+			/* 元素非空, 返回该元素, 否则进入下一个 bucket 中搜索 */
             /* We need to save the 'next' here, the iterator user
              * may delete the entry we are returning. */
             iter->nextEntry = iter->entry->next;
@@ -610,9 +628,11 @@ dictEntry *dictNext(dictIterator *iter)
 void dictReleaseIterator(dictIterator *iter)
 {
     if (!(iter->index == -1 && iter->table == 0)) {
+		/* 调用过 dictNext, 需要 check */
         if (iter->safe)
             iter->d->iterators--;
         else
+			/* unsafe iterator 需要保证 dict 指纹没变过 */
             assert(iter->fingerprint == dictFingerprint(iter->d));
     }
     zfree(iter);
@@ -846,6 +866,7 @@ static unsigned long rev(unsigned long v) {
  * 3) The reverse cursor is somewhat hard to understand at first, but this
  *    comment is supposed to help.
  */
+ /* TODO */
 unsigned long dictScan(dict *d,
                        unsigned long v,
                        dictScanFunction *fn,
@@ -869,6 +890,7 @@ unsigned long dictScan(dict *d,
         }
 
     } else {
+		/* rehashing */
         t0 = &d->ht[0];
         t1 = &d->ht[1];
 
@@ -920,6 +942,8 @@ unsigned long dictScan(dict *d,
 /* ------------------------- private functions ------------------------------ */
 
 /* Expand the hash table if needed */
+/* 若当前不处在 rehash 过程, 且元素数量大于buckets(dict_can_resize 为 0 则要
+ * 看其比例, 见这个变量的相关描述), 则将 ht[1] 表扩大为当前元素数量的两倍 */
 static int _dictExpandIfNeeded(dict *d)
 {
     /* Incremental rehashing already in progress. Return. */
@@ -960,6 +984,7 @@ static unsigned long _dictNextPower(unsigned long size)
  *
  * Note that if we are in the process of rehashing the hash table, the
  * index is always returned in the context of the second (new) hash table. */
+/* 若处在 rehash 过程, 则总是返回对应 ht[1] 表位置 */
 static int _dictKeyIndex(dict *d, const void *key)
 {
     unsigned int h, idx, table;

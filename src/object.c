@@ -36,6 +36,7 @@
 #define strtold(a,b) ((long double)strtod((a),(b)))
 #endif
 
+/* 创建类型为 type, encoding 为 REDIS_ENCODING_RAW 的对象 */
 robj *createObject(int type, void *ptr) {
     robj *o = zmalloc(sizeof(*o));
     o->type = type;
@@ -57,12 +58,17 @@ robj *createRawStringObject(char *ptr, size_t len) {
 /* Create a string object with encoding REDIS_ENCODING_EMBSTR, that is
  * an object where the sds string is actually an unmodifiable string
  * allocated in the same chunk as the object itself. */
+/* 从指定长度的字符串创建 sds 对象, ptr 为 NULL 则置每个元素为 '\0', 
+ * len 应当小于 REIDS_ENCODING_EMBSTR_SIZE_LIMIT, 于上面 raw 的区别就在于 sds
+ * 对象是紧邻 robj 之后分配的, 而 raw 不是 */
 robj *createEmbeddedStringObject(char *ptr, size_t len) {
     robj *o = zmalloc(sizeof(robj)+sizeof(struct sdshdr)+len+1);
+	/* 越过 robj 结构 */
     struct sdshdr *sh = (void*)(o+1);
 
     o->type = REDIS_STRING;
     o->encoding = REDIS_ENCODING_EMBSTR;
+	/* 越过 sdshdr 结构 */
     o->ptr = sh+1;
     o->refcount = 1;
     o->lru = LRU_CLOCK();
@@ -471,6 +477,8 @@ robj *getDecodedObject(robj *o) {
 #define REDIS_COMPARE_BINARY (1<<0)
 #define REDIS_COMPARE_COLL (1<<1)
 
+/* a, b 可能为 sds, 也可能为 整数, 为整数时使用 ll2string 将其转为字符串, 
+ * flags 为上面两种选项*/
 int compareStringObjectsWithFlags(robj *a, robj *b, int flags) {
     redisAssertWithInfo(NULL,a,a->type == REDIS_STRING && b->type == REDIS_STRING);
     char bufa[128], bufb[128], *astr, *bstr;

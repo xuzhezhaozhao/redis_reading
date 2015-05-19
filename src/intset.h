@@ -31,6 +31,7 @@
 #ifndef __INTSET_H
 #define __INTSET_H
 #include <stdint.h>
+#include <stdlib.h>
 
 typedef struct intset {
     uint32_t encoding;

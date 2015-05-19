@@ -123,6 +123,7 @@ list *listAddNodeTail(list *list, void *value)
     return list;
 }
 
+/* after 控制插入位置是在 old_node 之后还是在之前 */
 list *listInsertNode(list *list, listNode *old_node, void *value, int after) {
     listNode *node;
 
@@ -325,6 +326,7 @@ listNode *listIndex(list *list, long index) {
 }
 
 /* Rotate the list removing the tail node and inserting it to the head. */
+/* 将尾结点插入到头部 */
 void listRotate(list *list) {
     listNode *tail = list->tail;
 

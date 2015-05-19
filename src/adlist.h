@@ -48,6 +48,7 @@ typedef struct list {
     listNode *head;
     listNode *tail;
     void *(*dup)(void *ptr);
+	/* 用户定义的释放 listNode 的 value 域函数 */
     void (*free)(void *ptr);
     int (*match)(void *ptr, void *key);
     unsigned long len;

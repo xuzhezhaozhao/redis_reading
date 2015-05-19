@@ -44,6 +44,7 @@
 /* Unused arguments generate annoying warnings... */
 #define DICT_NOTUSED(V) ((void) V)
 
+/* hash 冲突采用链式 */
 typedef struct dictEntry {
     void *key;
     union {
@@ -69,6 +70,7 @@ typedef struct dictType {
 typedef struct dictht {
     dictEntry **table;
     unsigned long size;
+	/* size 为 power of 2, sizemask 为取模优化, 其值为 size - 1 */
     unsigned long sizemask;
     unsigned long used;
 } dictht;
@@ -76,8 +78,11 @@ typedef struct dictht {
 typedef struct dict {
     dictType *type;
     void *privdata;
+	/* ht[0] 为 old, ht[1] 为 new, rehash 完成后 old = new */
     dictht ht[2];
+	/* rehash 时当前处理的位置, 因为 rehash 采用的是 增量hash, 不是一次性完成 */
     long rehashidx; /* rehashing not in progress if rehashidx == -1 */
+	/* save iterator */
     int iterators; /* number of iterators currently running */
 } dict;
 
@@ -87,10 +92,14 @@ typedef struct dict {
  * should be called while iterating. */
 typedef struct dictIterator {
     dict *d;
+	/* 初始为 -1, 当前所处 bucket 位置 */
     long index;
+	/* 初始 table 0, safe 0 (safe iterator 为 1) */
     int table, safe;
+	/* 初始都为 NULL */
     dictEntry *entry, *nextEntry;
     /* unsafe iterator fingerprint for misuse detection. */
+	/* 当前 dict 的状态标记 */
     long long fingerprint;
 } dictIterator;
 
@@ -131,6 +140,7 @@ typedef void (dictScanFunction)(void *privdata, const dictEntry *de);
         entry->key = (_key_); \
 } while(0)
 
+/* 比较 key1, key2, 相等返回 true, 否则返回 false */
 #define dictCompareKeys(d, key1, key2) \
     (((d)->type->keyCompare) ? \
         (d)->type->keyCompare((d)->privdata, key1, key2) : \

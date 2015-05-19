@@ -183,6 +183,7 @@ typedef long long mstime_t; /* millisecond time type. */
 #define REDIS_ZSET 3
 #define REDIS_HASH 4
 
+/* 上面的没一种类型都有好几种子类型, encoding 标识这些子类型 */
 /* Objects encoding. Some kind of objects like Strings and Hashes can be
  * internally represented in multiple ways. The 'encoding' field of the object
  * is set to one of this fields for this object. */
@@ -410,10 +411,16 @@ typedef long long mstime_t; /* millisecond time type. */
 #define REDIS_LRU_CLOCK_MAX ((1<<REDIS_LRU_BITS)-1) /* Max value of obj->lru */
 #define REDIS_LRU_CLOCK_RESOLUTION 1000 /* LRU clock resolution in ms */
 typedef struct redisObject {
+	/* 对象基本类型: string, list, set, zset, hash */
     unsigned type:4;
+	/* 上面的没一种类型都有好几种子类型, encoding 标识这些子类型 */
     unsigned encoding:4;
     unsigned lru:REDIS_LRU_BITS; /* lru time (relative to server.lruclock) */
+	/* 引用计数, 为 0 时释放对象 */
     int refcount;
+	/* 对象指针, 其对象数据有可能在结构体后面, 也可能不在, 如对应 embedded
+	 * sds 对象, 就在结构体后, 而对于 raw string, 则不在, 而是指向另一块内
+	 * 存区域 */
     void *ptr;
 } robj;
 
@@ -564,6 +571,7 @@ struct saveparam {
     int changes;
 };
 
+/* 存放共享对象指针, 如 minstring 表示 lexicographic 最小的字符串 */
 struct sharedObjectsStruct {
     robj *crlf, *ok, *err, *emptybulk, *czero, *cone, *cnegone, *pong, *space,
     *colon, *nullbulk, *nullmultibulk, *queued,
@@ -586,13 +594,16 @@ typedef struct zskiplistNode {
     struct zskiplistNode *backward;
     struct zskiplistLevel {
         struct zskiplistNode *forward;
+		/* 跨度 */
         unsigned int span;
     } level[];
 } zskiplistNode;
 
 typedef struct zskiplist {
+	/* 头结点不含数据, 有 32 个level, 尾结点初始为 NULL */
     struct zskiplistNode *header, *tail;
     unsigned long length;
+	/* 最初为 1 */
     int level;
 } zskiplist;
 
@@ -864,6 +875,7 @@ struct redisServer {
     size_t set_max_intset_entries;
     size_t zset_max_ziplist_entries;
     size_t zset_max_ziplist_value;
+	/* HyperLogLog 结构从 sparse 到 dense 转换的空间大小临界值 */
     size_t hll_sparse_max_bytes;
     time_t unixtime;        /* Unix time sampled every cron cycle. */
     long long mstime;       /* Like 'unixtime' but with milliseconds resolution. */

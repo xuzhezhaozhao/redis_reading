@@ -34,6 +34,8 @@
 #include <stdint.h>
 #include <math.h>
 
+/* 注释是一定要看的, 再结合下面给出的参考链接, 就能基本搞懂其实现原理了 */
+
 /* The Redis HyperLogLog implementation is based on the following ideas:
  *
  * * The use of a 64 bit hash function as proposed in [1], in order to don't
@@ -90,6 +92,7 @@
  *
  * The dense representation used by Redis is the following:
  *
+ * 从低到高位取 6 bits, 下面的相同数字表示同一个 register 的 bits
  * +--------+--------+--------+------//      //--+
  * |11000000|22221111|33333322|55444444 ....     |
  * +--------+--------+--------+------//      //--+
@@ -98,6 +101,8 @@
  * LSB to the MSB, and using the next bytes as needed.
  *
  * Sparse representation
+ * 压缩存储方式, 有三种操作码, 通过操作码来存储整个 hll 结构的信息, 当
+ * register 的值超过 32 时将自动转化成 dense 模式
  * ===
  *
  * The sparse representation encodes registers using a run length
@@ -122,6 +127,7 @@
  * incremented by one. This opcode can represent values from 1 to 32,
  * repeated from 1 to 4 times.
  *
+ * register 值大于 32 时将自从转化成 dense 形式
  * The sparse representation can't represent registers with a value greater
  * than 32, however it is very unlikely that we find such a register in an
  * HLL with a cardinality where the sparse representation is still more
@@ -151,6 +157,8 @@
  * of registers with too big value, the dense representation size was used
  * as a sample).
  *
+ * 下面是 cardinality 与 sparse 模式下所需空间大小表
+ *
  * 100 267
  * 200 485
  * 300 678
@@ -171,6 +179,9 @@
  * 9000 10088
  * 10000 10591
  *
+ * sparse 模式的最大 bytes 是可以配置的, 超过这一大小就转化为 dense, 主要
+ * 是基于时间效率的考虑
+ * 
  * The dense representation uses 12288 bytes, so there is a big win up to
  * a cardinality of ~2000-3000. For bigger cardinalities the constant times
  * involved in updating the sparse representation is not justified by the
@@ -179,24 +190,121 @@
  * configured via the define server.hll_sparse_max_bytes.
  */
 
+/* 参考:
+ * 
+ * [3] 相关算法(了解基本原理): http://blog.codinglabs.org/articles/algorithms-for-cardinality-estimation-part-i.html 
+ * [4] redis 实现详解(非常好): http://antirez.com/news/75
+ * 
+ * 下面的内容来自 [4], 非常有帮助
+ * 
+ * The standard error of HyperLogLog is 1.04/sqrt(m), where“m is the 
+ * number of registers used. Redis uses 16384(2 ^ 14) registers, so the
+ * standard error is 0.81%.
+ * 
+ * Since the hash function used in the Redis implementation has a 64 bit 
+ * output, and we use 14 bits of the hash output in order to address our 
+ * 16k registers, we are left with 50 bits, so the longest run of zeroes 
+ * we can encounter will fit a 6 bit register. This is why a Redis 
+ * HyperLogLog value only uses 12k bytes for 16k registers.
+ * 
+ *
+ * 基本结构:
+ * From the point of view of Redis an HyperLogLog is just a string, that 
+ * happens to be exactly 12k + 8 bytes in length (12296 bytes to be precise).
+ * All the HyperLogLog commands will happily run if called with a String 
+ * value exactly of this size, or will report an error. However all the 
+ * calls are safe whatever is stored in the string: you can store garbage 
+ * and still ask for an estimation of the cardinality. In no case this will 
+ * make the server crash.
+ * 
+ * Also everything in the representation is endian neutral and is not 
+ * affected by the processor word size, so a 32 bit big endian processor 
+ * can read the HLL of a 64 bit little endian processor.
+ * 
+ *
+ * Redis HHLs are composed of 16k registers packed into 6 bit integers. 
+ * This creates several performance issues that must be solved in order 
+ * to provide an API of commands that can be called without thinking too
+ * much.
+ *
+ * 
+ * 效率问题:
+ * One problem is that accessing to registers require accessing multiple 
+ * bytes, shifting, and masking in order to retrieve the correct 6 bit 
+ * value. This is not a big problem for PFADD that only touches a register 
+ * for every element, but PFCOUNT needs to perform a computation using all 
+ * the 16k registers, so if there are non trivial constant times to access 
+ * every single register, the command risks to be slow. Moreover, while 
+ * accessing the registers, we need to compute the sum of pow(2,-register)
+ * which involves floating point math.
+ *
+ * 优化方案:
+ * One may feel the temptation of using full bytes instead of 6 bit integers 
+ * in order to speedup the computation, however this would be a shame since 
+ * every HLL would use 16k instead of 12k that is a non trivial difference, 
+ * so this route was discarded at the beginning. The command was optimized 
+ * for a speedup of about 3 times compared to the initial implementation by 
+ * doing the following changes:
+ *
+ *		* For m=16k which is the Redis default (the implementation is more 
+ *		generic and could theoretically work with different values) the 
+ *		implementation selects a fast-path with unrolled loops accessing 16 
+ *		register at every time. The registers are accessed using fixed 
+ *		offsets / shifts / masks (via some pointer that is incremented 12 
+ *		bytes at the next iteration).
+ *		
+ *		* The floating point computation was modified in order to allow for 
+ *		multiple operations to be performed in parallel when possible. This
+ *		was just a matter of adding parens. Floating point math is not 
+ *		commutative, but in this case there was no loss of precision.
+ *
+ *		* The pow(2,-register) term was precomputed in a lookup table.
+ *
+ * 
+ * 使用 cache:
+ * Instead of optimizing the computation of the approximated cardinality 
+ * further, there was a simpler solution. Basically the output of the 
+ * algorithm only changes if some register changes. However as already 
+ * observed above, most of the PFADD calls don’t result in any register 
+ * changed. This basically means that it is possible to cache the last 
+ * output and recompute it only if some register changes.
+ * 
+ *
+ * After this change even trying to add elements at maximum speed using 
+ * a pipeline of 32 elements with 50 simultaneous clients, PFCOUNT was 
+ * able to perform as well as any other O(1) command with very small 
+ * constant times.
+ */
+
+/* uint8_t 为 8 bits 类型 */
 struct hllhdr {
     char magic[4];      /* "HYLL" */
     uint8_t encoding;   /* HLL_DENSE or HLL_SPARSE. */
     uint8_t notused[3]; /* Reserved for future use, must be zero. */
+	/* 一旦 registers 被修改, 这个 cache 就无效了, If the most significant 
+	 * bit is set, then the precomputed value is stale and requires to be
+	 * recomputed, otherwise PFCOUNT can use it as it is. PFADD just turns 
+	 * on the “invalid cache” bit when some register is modified. */
     uint8_t card[8];    /* Cached cardinality, little endian. */
+	/* 就是 [3] 中说的桶, 保存的是桶的 p(a) 值, 需要 6 bits, 一共有 16384 
+	 * 个 registers */
     uint8_t registers[]; /* Data bytes. */
 };
 
 /* The cached cardinality MSB is used to signal validity of the cached value. */
+/* 使 cache 无效 */
 #define HLL_INVALIDATE_CACHE(hdr) (hdr)->card[7] |= (1<<7)
+/* 测试 cache 是否有效 */
 #define HLL_VALID_CACHE(hdr) (((hdr)->card[7] & (1<<7)) == 0)
 
 #define HLL_P 14 /* The greater is P, the smaller the error. */
 #define HLL_REGISTERS (1<<HLL_P) /* With P=14, 16384 registers. */
+/* hash & HLL_P_MASK 就是 register index */
 #define HLL_P_MASK (HLL_REGISTERS-1) /* Mask to index register. */
 #define HLL_BITS 6 /* Enough to count up to 63 leading zeroes. */
 #define HLL_REGISTER_MAX ((1<<HLL_BITS)-1)
 #define HLL_HDR_SIZE sizeof(struct hllhdr)
+/* 加 7 是向上取整 */
 #define HLL_DENSE_SIZE (HLL_HDR_SIZE+((HLL_REGISTERS*HLL_BITS+7)/8))
 #define HLL_DENSE 0 /* Dense encoding. */
 #define HLL_SPARSE 1 /* Sparse encoding. */
@@ -369,6 +477,7 @@ static char *invalid_hll_err = "-INVALIDOBJ Corrupted HLL object detected\r\n";
 #define HLL_SPARSE_XZERO_LEN(p) (((((*(p)) & 0x3f) << 8) | (*((p)+1)))+1)
 #define HLL_SPARSE_VAL_VALUE(p) ((((*(p)) >> 2) & 0x1f)+1)
 #define HLL_SPARSE_VAL_LEN(p) (((*(p)) & 0x3)+1)
+/* sparse 表示的最大 register 值为 32, 见开头注释 */
 #define HLL_SPARSE_VAL_MAX_VALUE 32
 #define HLL_SPARSE_VAL_MAX_LEN 4
 #define HLL_SPARSE_ZERO_MAX_LEN 64
@@ -441,6 +550,7 @@ uint64_t MurmurHash64A (const void * key, int len, unsigned int seed) {
 /* Given a string element to add to the HyperLogLog, returns the length
  * of the pattern 000..1 of the element hash. As a side effect 'regp' is
  * set to the register index this element hashes to. */
+/* 0001 返回 4, 包括 1, regp 保存 register index */
 int hllPatLen(unsigned char *ele, size_t elesize, long *regp) {
     uint64_t hash, bit, index;
     int count;
@@ -458,6 +568,7 @@ int hllPatLen(unsigned char *ele, size_t elesize, long *regp) {
      * there are high probabilities to find a 1 after a few iterations. */
     hash = MurmurHash64A(ele,elesize,0xadc83b19ULL);
     index = hash & HLL_P_MASK; /* Register index. */
+	/* 将 hash 最高位置为 1 */
     hash |= ((uint64_t)1<<63); /* Make sure the loop terminates. */
     bit = HLL_REGISTERS; /* First bit not used to address the register. */
     count = 1; /* Initialized to 1 since we count the "00000...1" pattern. */
@@ -565,6 +676,7 @@ double hllDenseSum(uint8_t *registers, double *PE, int *ezp) {
  *
  * The function returns REDIS_OK if the sparse representation was valid,
  * otherwise REDIS_ERR is returned if the representation was corrupted. */
+/* sparse 和 dense 都是 sds, 结果保存在 o->ptr 中 */
 int hllSparseToDense(robj *o) {
     sds sparse = o->ptr, dense;
     struct hllhdr *hdr, *oldhdr = (struct hllhdr*)sparse;
@@ -608,6 +720,7 @@ int hllSparseToDense(robj *o) {
 
     /* If the sparse representation was valid, we expect to find idx
      * set to HLL_REGISTERS. */
+	/* register 数量不匹配, 返回错误 */
     if (idx != HLL_REGISTERS) {
         sdsfree(dense);
         return REDIS_ERR;
@@ -646,6 +759,7 @@ int hllSparseAdd(robj *o, unsigned char *ele, size_t elesize) {
 
     /* If the count is too big to be representable by the sparse representation
      * switch to dense representation. */
+	/* sparse 表示的最大 register 值为 32, 见开头注释 */
     if (count > HLL_SPARSE_VAL_MAX_VALUE) goto promote;
 
     /* When updating a sparse representation, sometimes we may need to
