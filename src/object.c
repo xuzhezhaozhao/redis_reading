@@ -51,6 +51,7 @@ robj *createObject(int type, void *ptr) {
 
 /* Create a string object with encoding REDIS_ENCODING_RAW, that is a plain
  * string object where o->ptr points to a proper sds string. */
+/* raw string, 字符串数据没有在结构体后面 */
 robj *createRawStringObject(char *ptr, size_t len) {
     return createObject(REDIS_STRING,sdsnewlen(ptr,len));
 }
@@ -90,6 +91,7 @@ robj *createEmbeddedStringObject(char *ptr, size_t len) {
  *
  * The current limit of 39 is chosen so that the biggest string object
  * we allocate as EMBSTR will still fit into the 64 byte arena of jemalloc. */
+/* 根据字符串长度创建合适的字符串类型, 长度小于等于 39 的 embedded, 否则 raw */
 #define REDIS_ENCODING_EMBSTR_SIZE_LIMIT 39
 robj *createStringObject(char *ptr, size_t len) {
     if (len <= REDIS_ENCODING_EMBSTR_SIZE_LIMIT)
@@ -98,6 +100,10 @@ robj *createStringObject(char *ptr, size_t len) {
         return createRawStringObject(ptr,len);
 }
 
+/* 有几个优化
+ * 1. 对于 0 ~ 10000 的数, 可以从共享整数对象数组中直接得到 
+ * 2. 对于 范围在 long 内的数, 直接将值保存在指针中, encoding 置为 INT 
+ * 3. 对于 范围在 long long, 转为 sds */
 robj *createStringObjectFromLongLong(long long value) {
     robj *o;
     if (value >= 0 && value < REDIS_SHARED_INTEGERS) {
@@ -106,6 +112,7 @@ robj *createStringObjectFromLongLong(long long value) {
     } else {
         if (value >= LONG_MIN && value <= LONG_MAX) {
             o = createObject(REDIS_STRING, NULL);
+			/* 以整数类型直接保存在 指针 中 */
             o->encoding = REDIS_ENCODING_INT;
             o->ptr = (void*)((long)value);
         } else {
@@ -121,6 +128,7 @@ robj *createStringObjectFromLongLong(long long value) {
  * and the output of snprintf() is not modified.
  *
  * The 'humanfriendly' option is used for INCRBYFLOAT and HINCRBYFLOAT. */
+/* humanfriendly 为 1 会移除小数点后末尾的 0, 精度为 17 位 */
 robj *createStringObjectFromLongDouble(long double value, int humanfriendly) {
     char buf[256];
     int len;
@@ -186,14 +194,17 @@ robj *dupStringObject(robj *o) {
     }
 }
 
+/* 创建双向链表 */
 robj *createListObject(void) {
     list *l = listCreate();
     robj *o = createObject(REDIS_LIST,l);
+	/* 设置 list 的 free 方法*/
     listSetFreeMethod(l,decrRefCountVoid);
     o->encoding = REDIS_ENCODING_LINKEDLIST;
     return o;
 }
 
+/* 创建 ziplist */
 robj *createZiplistObject(void) {
     unsigned char *zl = ziplistNew();
     robj *o = createObject(REDIS_LIST,zl);
@@ -201,6 +212,7 @@ robj *createZiplistObject(void) {
     return o;
 }
 
+/* 创建 dict, hash table */
 robj *createSetObject(void) {
     dict *d = dictCreate(&setDictType,NULL);
     robj *o = createObject(REDIS_SET,d);
@@ -208,6 +220,7 @@ robj *createSetObject(void) {
     return o;
 }
 
+/* 创建 intset */
 robj *createIntsetObject(void) {
     intset *is = intsetNew();
     robj *o = createObject(REDIS_SET,is);
@@ -215,6 +228,7 @@ robj *createIntsetObject(void) {
     return o;
 }
 
+/* small hash table 是用 ziplist 实现的, 超过一定限制后才转换成 dict */
 robj *createHashObject(void) {
     unsigned char *zl = ziplistNew();
     robj *o = createObject(REDIS_HASH, zl);
@@ -240,12 +254,15 @@ robj *createZsetZiplistObject(void) {
     return o;
 }
 
+/* 释放 string 对象的数据区域, 只有编码为 RAW 需要释放, 否则可以跟对象一起被
+ * 释放, 无需单独释放 */
 void freeStringObject(robj *o) {
     if (o->encoding == REDIS_ENCODING_RAW) {
         sdsfree(o->ptr);
     }
 }
 
+/* 释放 list 类型对象的数据区域 */
 void freeListObject(robj *o) {
     switch (o->encoding) {
     case REDIS_ENCODING_LINKEDLIST:
@@ -259,6 +276,7 @@ void freeListObject(robj *o) {
     }
 }
 
+/* 释放 set 类型对象的数据区域 */
 void freeSetObject(robj *o) {
     switch (o->encoding) {
     case REDIS_ENCODING_HT:
@@ -272,6 +290,7 @@ void freeSetObject(robj *o) {
     }
 }
 
+/* 释放 zset 类型对象的数据区域 */
 void freeZsetObject(robj *o) {
     zset *zs;
     switch (o->encoding) {
@@ -289,6 +308,7 @@ void freeZsetObject(robj *o) {
     }
 }
 
+/* 释放 HASH 类型对象的数据区域 */
 void freeHashObject(robj *o) {
     switch (o->encoding) {
     case REDIS_ENCODING_HT:
@@ -303,10 +323,12 @@ void freeHashObject(robj *o) {
     }
 }
 
+/* 对象引用加 1 */
 void incrRefCount(robj *o) {
     o->refcount++;
 }
 
+/* 对象引用减 1, 引用数为 0 时释放该对象 */
 void decrRefCount(robj *o) {
     if (o->refcount <= 0) redisPanic("decrRefCount against refcount <= 0");
     if (o->refcount == 1) {
@@ -327,6 +349,7 @@ void decrRefCount(robj *o) {
 /* This variant of decrRefCount() gets its argument as void, and is useful
  * as free method in data structures that expect a 'void free_object(void*)'
  * prototype for the free method. */
+/* 可以成为 list 的 free 方法 */
 void decrRefCountVoid(void *o) {
     decrRefCount(o);
 }
@@ -356,6 +379,7 @@ int checkType(redisClient *c, robj *o, int type) {
     return 0;
 }
 
+/* o 为 string 类型, 判断其是否可以转 long long */
 int isObjectRepresentableAsLongLong(robj *o, long long *llval) {
     redisAssertWithInfo(NULL,o,o->type == REDIS_STRING);
     if (o->encoding == REDIS_ENCODING_INT) {
@@ -367,6 +391,10 @@ int isObjectRepresentableAsLongLong(robj *o, long long *llval) {
 }
 
 /* Try to encode a string object in order to save space */
+/* 尝试将其转成 long, 并将结果保存在指针中, 或者尝试将 RAW string 转成 
+ * embedded string (如果 string 长度比较小的话), 若前面的尝试都失败的话,
+ * 则尝试压缩 sds, 如 sds free 区域大小大于 len/10, 则压缩字符串, 使 free
+ * 区域大小为 0 */
 robj *tryObjectEncoding(robj *o) {
     long value;
     sds s = o->ptr;
@@ -381,6 +409,7 @@ robj *tryObjectEncoding(robj *o) {
     /* We try some specialized encoding only for objects that are
      * RAW or EMBSTR encoded, in other words objects that are still
      * in represented by an actually array of chars. */
+	/* 编码为 INT 的不用在编码了, 只编码 RAW 和 EMBSTR */
     if (!sdsEncodedObject(o)) return o;
 
     /* It's not safe to encode shared objects: shared objects can be shared
@@ -403,10 +432,12 @@ robj *tryObjectEncoding(robj *o) {
             value >= 0 &&
             value < REDIS_SHARED_INTEGERS)
         {
+			/* 使用共享对象 */
             decrRefCount(o);
             incrRefCount(shared.integers[value]);
             return shared.integers[value];
         } else {
+			/* 用指针保存 long */
             if (o->encoding == REDIS_ENCODING_RAW) sdsfree(o->ptr);
             o->encoding = REDIS_ENCODING_INT;
             o->ptr = (void*) value;
@@ -448,6 +479,9 @@ robj *tryObjectEncoding(robj *o) {
 
 /* Get a decoded version of an encoded object (returned as a new object).
  * If the object is already raw-encoded just increment the ref count. */
+/* 1. RAW, EMBSTR 直接返回, 对象引用加 1 
+ * 2. INT 将指针保存的 long 转为字符串 
+ * 3. 其余类型报错 */
 robj *getDecodedObject(robj *o) {
     robj *dec;
 
@@ -477,7 +511,7 @@ robj *getDecodedObject(robj *o) {
 #define REDIS_COMPARE_BINARY (1<<0)
 #define REDIS_COMPARE_COLL (1<<1)
 
-/* a, b 可能为 sds, 也可能为 整数, 为整数时使用 ll2string 将其转为字符串, 
+/* a, b 为字符串类型, 为 INT 编码时使用 ll2string 将其转为字符串, 
  * flags 为上面两种选项*/
 int compareStringObjectsWithFlags(robj *a, robj *b, int flags) {
     redisAssertWithInfo(NULL,a,a->type == REDIS_STRING && b->type == REDIS_STRING);
@@ -536,6 +570,7 @@ int equalStringObjects(robj *a, robj *b) {
     }
 }
 
+/* 字符串类型对象的长度 */
 size_t stringObjectLen(robj *o) {
     redisAssertWithInfo(NULL,o,o->type == REDIS_STRING);
     if (sdsEncodedObject(o)) {
@@ -547,6 +582,8 @@ size_t stringObjectLen(robj *o) {
     }
 }
 
+/* 字符串对象转 double, 成功返回 REDIS_OK, 失败返回 REDIS_ERR, 若 o 不是字符
+ * 串类型则保错 */
 int getDoubleFromObject(robj *o, double *target) {
     double value;
     char *eptr;
@@ -589,6 +626,8 @@ int getDoubleFromObjectOrReply(redisClient *c, robj *o, double *target, const ch
     return REDIS_OK;
 }
 
+/* 字符串对象转 long double, 成功返回 REDIS_OK, 失败返回 REDIS_ERR, 若 o 不
+ * 是字符串类型则保错 */
 int getLongDoubleFromObject(robj *o, long double *target) {
     long double value;
     char *eptr;
@@ -627,6 +666,8 @@ int getLongDoubleFromObjectOrReply(redisClient *c, robj *o, long double *target,
     return REDIS_OK;
 }
 
+/* 字符串对象转 long long, 成功返回 REDIS_OK, 失败返回 REDIS_ERR, 若 o 不
+ * 是字符串类型则保错 */
 int getLongLongFromObject(robj *o, long long *target) {
     long long value;
     char *eptr;
@@ -709,6 +750,7 @@ unsigned long long estimateObjectIdleTime(robj *o) {
 
 /* This is a helper function for the OBJECT command. We need to lookup keys
  * without any modification of LRU or other parameters. */
+/* 没找到返回 NULL */
 robj *objectCommandLookup(redisClient *c, robj *key) {
     dictEntry *de;
 

@@ -157,6 +157,7 @@ typedef long long mstime_t; /* millisecond time type. */
 #define REDIS_EVENTLOOP_FDSET_INCR (REDIS_MIN_RESERVED_FDS+96)
 
 /* Hash table parameters */
+/* dict hash table 使用率低于这个百分比就要 resize */
 #define REDIS_HT_MINFILL        10      /* Minimal hash table fill 10% */
 
 /* Command flags. Please check the command table defined in the redis.c file
@@ -177,20 +178,29 @@ typedef long long mstime_t; /* millisecond time type. */
 #define REDIS_CMD_FAST 8192                 /* "F" flag */
 
 /* Object types */
+/* 注释表示类型可以含有的子类型 */
+
+/* RAW, EMBSTR, INT  */
 #define REDIS_STRING 0
+/* list 双向链表, ziplist */
 #define REDIS_LIST 1
+/* dict hash table (HT), intset */
 #define REDIS_SET 2
+/* skiplist (这中情况下还包含一个 dict), ziplist */
 #define REDIS_ZSET 3
+/* ziplist (ziplist 属于两个不同的类型, 还属于 list), dict (由 ziplist 转换) */
 #define REDIS_HASH 4
 
-/* 上面的没一种类型都有好几种子类型, encoding 标识这些子类型 */
+/* 上面的每一种类型都有好几种子类型, encoding 标识这些子类型 */
 /* Objects encoding. Some kind of objects like Strings and Hashes can be
  * internally represented in multiple ways. The 'encoding' field of the object
  * is set to one of this fields for this object. */
 #define REDIS_ENCODING_RAW 0     /* Raw representation */
 #define REDIS_ENCODING_INT 1     /* Encoded as integer */
+/* dict */
 #define REDIS_ENCODING_HT 2      /* Encoded as hash table */
 #define REDIS_ENCODING_ZIPMAP 3  /* Encoded as zipmap */
+/* list 双向链表 */
 #define REDIS_ENCODING_LINKEDLIST 4 /* Encoded as regular linked list */
 #define REDIS_ENCODING_ZIPLIST 5 /* Encoded as ziplist */
 #define REDIS_ENCODING_INTSET 6  /* Encoded as intset */
@@ -289,7 +299,9 @@ typedef long long mstime_t; /* millisecond time type. */
 #define REDIS_REPL_SYNCIO_TIMEOUT 5
 
 /* List related stuff */
+/* 从后往前遍历 */
 #define REDIS_HEAD 0
+/* 从前往后遍历 */
 #define REDIS_TAIL 1
 
 /* Sort operations */
@@ -415,12 +427,13 @@ typedef struct redisObject {
     unsigned type:4;
 	/* 上面的没一种类型都有好几种子类型, encoding 标识这些子类型 */
     unsigned encoding:4;
+	/* 对象创建时其值为 LRU_CLOCK() */
     unsigned lru:REDIS_LRU_BITS; /* lru time (relative to server.lruclock) */
-	/* 引用计数, 为 0 时释放对象 */
+	/* 引用计数, 为 0 时释放对象, 对象首次被创建时其值为 1 */
     int refcount;
 	/* 对象指针, 其对象数据有可能在结构体后面, 也可能不在, 如对应 embedded
-	 * sds 对象, 就在结构体后, 而对于 raw string, 则不在, 而是指向另一块内
-	 * 存区域 */
+	 * sds 对象, 就在结构体后, 指向 sds 的数据区域, 而对于 raw string, 则不
+	 * 在, 而是指向另一块内存区域 */
     void *ptr;
 } robj;
 
@@ -460,6 +473,7 @@ struct evictionPoolEntry {
 typedef struct redisDb {
     dict *dict;                 /* The keyspace for this DB */
     dict *expires;              /* Timeout of keys with a timeout set */
+	/* key 为 client 等待的数据, value 为等待该 key 的 clients list */
     dict *blocking_keys;        /* Keys with clients waiting for data (BLPOP) */
     dict *ready_keys;           /* Blocked keys that received a PUSH */
     dict *watched_keys;         /* WATCHED keys for MULTI/EXEC CAS */
@@ -490,6 +504,7 @@ typedef struct blockingState {
                              * is > timeout then the operation timed out. */
 
     /* REDIS_BLOCK_LIST */
+	/* 客户端等待的 keys */
     dict *keys;             /* The keys we are waiting to terminate a blocking
                              * operation such as BLPOP. Otherwise NULL. */
     robj *target;           /* The key that should receive the element,
@@ -526,7 +541,9 @@ typedef struct redisClient {
     robj *name;             /* As set by CLIENT SETNAME */
     sds querybuf;
     size_t querybuf_peak;   /* Recent (100ms or more) peak of querybuf size */
+	/* 命令行参数个数 */
     int argc;
+	/* 命令行参数 */
     robj **argv;
     struct redisCommand *cmd, *lastcmd;
     int reqtype;
@@ -582,6 +599,7 @@ struct sharedObjectsStruct {
     *unsubscribebulk, *psubscribebulk, *punsubscribebulk, *del, *rpop, *lpop,
     *lpush, *emptyscan, *minstring, *maxstring,
     *select[REDIS_SHARED_SELECT_CMDS],
+	/* 共享整数对象, ptr 指针存的是整数值 */
     *integers[REDIS_SHARED_INTEGERS],
     *mbulkhdr[REDIS_SHARED_BULKHDR_LEN], /* "*<value>\r\n" */
     *bulkhdr[REDIS_SHARED_BULKHDR_LEN];  /* "$<value>\r\n" */
@@ -860,6 +878,7 @@ struct redisServer {
     /* Blocked clients */
     unsigned int bpop_blocked_clients; /* Number of clients blocked by lists */
     list *unblocked_clients; /* list of clients to unblock before next loop */
+	/* t_list.c signalListAsReady 函数中有用到 */
     list *ready_keys;        /* List of readyList structures for BLPOP & co */
     /* Sort parameters - qsort_r() is only available under BSD so we
      * have to take this state global, in order to pass it to sortCompare() */
@@ -870,7 +889,9 @@ struct redisServer {
     /* Zip structure config, see redis.conf for more information  */
     size_t hash_max_ziplist_entries;
     size_t hash_max_ziplist_value;
+	/* ziplist 中元素数量限制, 超过这个数就要转为 linked list */
     size_t list_max_ziplist_entries;
+	/* 若插入到 ziplist 的 value 长度超过这个值就要进行转换为 real list */
     size_t list_max_ziplist_value;
     size_t set_max_intset_entries;
     size_t zset_max_ziplist_entries;
@@ -960,16 +981,23 @@ typedef struct _redisSortOperation {
 } redisSortOperation;
 
 /* Structure to hold list iteration abstraction. */
+/* 可以用于 linked list 和 ziplist 迭代器 */
 typedef struct {
+	/* 用于迭代的 list, 可能为 linked list 或者 ziplist */
     robj *subject;
+	/* list 类型编码 */
     unsigned char encoding;
     unsigned char direction; /* Iteration direction */
+	/* 用于 ziplist */
     unsigned char *zi;
+	/* 用于 linked list  */
     listNode *ln;
 } listTypeIterator;
 
 /* Structure for an entry while iterating over a list. */
+/* 跟上面的结构对应 */
 typedef struct {
+	/* 当前迭代器 */
     listTypeIterator *li;
     unsigned char *zi;  /* Entry in ziplist */
     listNode *ln;       /* Entry in linked list */
@@ -988,11 +1016,15 @@ typedef struct {
  * not both are required, store pointers in the iterator to avoid
  * unnecessary memory allocation for fields/values. */
 typedef struct {
+	/* 迭代对象 */
     robj *subject;
     int encoding;
 
+	/* ziplist, fptr, vptr point to the first or next pair, fptr 代表 key, vptr
+	 * 代表 value */
     unsigned char *fptr, *vptr;
 
+	/* dict */
     dictIterator *di;
     dictEntry *de;
 } hashTypeIterator;

@@ -37,6 +37,7 @@
 /* Check the length of a number of objects to see if we need to convert a
  * ziplist to a real hash. Note that we only check string encoded objects
  * as their string length can be queried in constant time. */
+/* start, end 为 argv 向量中的起始和终止位置 */
 void hashTypeTryConversion(robj *o, robj **argv, int start, int end) {
     int i;
 
@@ -62,6 +63,7 @@ void hashTypeTryObjectEncoding(robj *subject, robj **o1, robj **o2) {
 
 /* Get the value from a ziplist encoded hash, identified by field.
  * Returns -1 when the field cannot be found. */
+/* o: ziplist, field 为待搜索的 key, vstr 或 vll 返回 value */
 int hashTypeGetFromZiplist(robj *o, robj *field,
                            unsigned char **vstr,
                            unsigned int *vlen,
@@ -115,6 +117,7 @@ int hashTypeGetFromHashTable(robj *o, robj *field, robj **value) {
  *
  * The lower level function can prevent copy on write so it is
  * the preferred way of doing read operations. */
+/* field 为 key, 返回其 value */
 robj *hashTypeGetObject(robj *o, robj *field) {
     robj *value = NULL;
 
@@ -221,6 +224,7 @@ int hashTypeSet(robj *o, robj *field, robj *value) {
 
 /* Delete an element from a hash.
  * Return 1 on deleted and 0 on not found. */
+/* dict 会检测是否需要 resize hash table */
 int hashTypeDelete(robj *o, robj *field) {
     int deleted = 0;
 
@@ -273,6 +277,7 @@ unsigned long hashTypeLength(robj *o) {
     return length;
 }
 
+/* 初始化迭代器 */
 hashTypeIterator *hashTypeInitIterator(robj *subject) {
     hashTypeIterator *hi = zmalloc(sizeof(hashTypeIterator));
     hi->subject = subject;
@@ -337,6 +342,7 @@ int hashTypeNext(hashTypeIterator *hi) {
 
 /* Get the field or value at iterator cursor, for an iterator on a hash value
  * encoded as a ziplist. Prototype is similar to `hashTypeGetFromZiplist`. */
+/* what 控制是获取 key 还是 value */
 void hashTypeCurrentFromZiplist(hashTypeIterator *hi, int what,
                                 unsigned char **vstr,
                                 unsigned int *vlen,
@@ -357,6 +363,7 @@ void hashTypeCurrentFromZiplist(hashTypeIterator *hi, int what,
 
 /* Get the field or value at iterator cursor, for an iterator on a hash value
  * encoded as a ziplist. Prototype is similar to `hashTypeGetFromHashTable`. */
+/* hi 迭代对象为 dict */
 void hashTypeCurrentFromHashTable(hashTypeIterator *hi, int what, robj **dst) {
     redisAssert(hi->encoding == REDIS_ENCODING_HT);
 
@@ -370,6 +377,7 @@ void hashTypeCurrentFromHashTable(hashTypeIterator *hi, int what, robj **dst) {
 /* A non copy-on-write friendly but higher level version of hashTypeCurrent*()
  * that returns an object with incremented refcount (or a new object). It is up
  * to the caller to decrRefCount() the object if no reference is retained. */
+/* what 控制是获取 key 还是 value, REDIS_HASH_KEY, REDIS_HASH_VALUE */
 robj *hashTypeCurrentObject(hashTypeIterator *hi, int what) {
     robj *dst;
 
@@ -393,6 +401,8 @@ robj *hashTypeCurrentObject(hashTypeIterator *hi, int what) {
     return dst;
 }
 
+/* db 中 key 不存在就创建对应的 hash object, 存在就返回 key 对应的 value (不
+ * 为 REDIS_HASH 类型返回 NULL) */
 robj *hashTypeLookupWriteOrCreate(redisClient *c, robj *key) {
     robj *o = lookupKeyWrite(c->db,key);
     if (o == NULL) {
@@ -407,6 +417,7 @@ robj *hashTypeLookupWriteOrCreate(redisClient *c, robj *key) {
     return o;
 }
 
+/* 将 ziplist 转为 dict */
 void hashTypeConvertZiplist(robj *o, int enc) {
     redisAssert(o->encoding == REDIS_ENCODING_ZIPLIST);
 
@@ -447,6 +458,7 @@ void hashTypeConvertZiplist(robj *o, int enc) {
     }
 }
 
+/* 将 ziplist 转为 dict */
 void hashTypeConvert(robj *o, int enc) {
     if (o->encoding == REDIS_ENCODING_ZIPLIST) {
         hashTypeConvertZiplist(o, enc);
@@ -461,6 +473,7 @@ void hashTypeConvert(robj *o, int enc) {
  * Hash type commands
  *----------------------------------------------------------------------------*/
 
+/* HSET key field value */
 void hsetCommand(redisClient *c) {
     int update;
     robj *o;
@@ -475,6 +488,7 @@ void hsetCommand(redisClient *c) {
     server.dirty++;
 }
 
+/* HSETNX key field value */
 void hsetnxCommand(redisClient *c) {
     robj *o;
     if ((o = hashTypeLookupWriteOrCreate(c,c->argv[1])) == NULL) return;
@@ -492,6 +506,7 @@ void hsetnxCommand(redisClient *c) {
     }
 }
 
+/* HMSET key field value [field value ...] */
 void hmsetCommand(redisClient *c) {
     int i;
     robj *o;
@@ -513,6 +528,7 @@ void hmsetCommand(redisClient *c) {
     server.dirty++;
 }
 
+/* HINCRBY key field increment */
 void hincrbyCommand(redisClient *c) {
     long long value, incr, oldvalue;
     robj *o, *current, *new;
@@ -583,6 +599,7 @@ void hincrbyfloatCommand(redisClient *c) {
     decrRefCount(new);
 }
 
+/* 返回 o 的 field 域的值给客户端 */
 static void addHashFieldToReply(redisClient *c, robj *o, robj *field) {
     int ret;
 
@@ -649,6 +666,7 @@ void hmgetCommand(redisClient *c) {
     }
 }
 
+/* HDEL key field [field ...] */
 void hdelCommand(redisClient *c) {
     robj *o;
     int j, deleted = 0, keyremoved = 0;

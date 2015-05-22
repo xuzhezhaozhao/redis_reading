@@ -49,7 +49,9 @@ typedef struct dictEntry {
     void *key;
     union {
         void *val;
+		/* unsigned 64 bits integer */
         uint64_t u64;
+		/* signed 64 bits integer, 存储 key 的 expire 值用的是这个域 */
         int64_t s64;
         double d;
     } v;
@@ -152,7 +154,9 @@ typedef void (dictScanFunction)(void *privdata, const dictEntry *de);
 #define dictGetSignedIntegerVal(he) ((he)->v.s64)
 #define dictGetUnsignedIntegerVal(he) ((he)->v.u64)
 #define dictGetDoubleVal(he) ((he)->v.d)
+/* hash table 总大小, 包括 ht[0], ht[1] */
 #define dictSlots(d) ((d)->ht[0].size+(d)->ht[1].size)
+/* hash table 中元素数量 */
 #define dictSize(d) ((d)->ht[0].used+(d)->ht[1].used)
 #define dictIsRehashing(d) ((d)->rehashidx != -1)
 

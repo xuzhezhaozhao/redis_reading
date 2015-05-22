@@ -62,6 +62,7 @@ static int checkStringLength(redisClient *c, long long size) {
 #define REDIS_SET_NX (1<<0)     /* Set if key not exists. */
 #define REDIS_SET_XX (1<<1)     /* Set if key exists. */
 
+/* unit 为时间单元, 秒, 毫秒 */
 void setGenericCommand(redisClient *c, int flags, robj *key, robj *val, robj *expire, int unit, robj *ok_reply, robj *abort_reply) {
     long long milliseconds = 0; /* initialized to avoid any harmness warning */
 
@@ -161,6 +162,7 @@ void getCommand(redisClient *c) {
     getGenericCommand(c);
 }
 
+/* getset */
 void getsetCommand(redisClient *c) {
     if (getGenericCommand(c) == REDIS_ERR) return;
     c->argv[2] = tryObjectEncoding(c->argv[2]);
@@ -169,6 +171,7 @@ void getsetCommand(redisClient *c) {
     server.dirty++;
 }
 
+/* setrange */
 void setrangeCommand(redisClient *c) {
     robj *o;
     long offset;
@@ -184,6 +187,7 @@ void setrangeCommand(redisClient *c) {
 
     o = lookupKeyWrite(c->db,c->argv[1]);
     if (o == NULL) {
+		/* key 不存在 */
         /* Return 0 when setting nothing on a non-existing string */
         if (sdslen(value) == 0) {
             addReply(c,shared.czero);
@@ -229,6 +233,7 @@ void setrangeCommand(redisClient *c) {
     addReplyLongLong(c,sdslen(o->ptr));
 }
 
+/* getrange */
 void getrangeCommand(redisClient *c) {
     robj *o;
     long long start, end;
@@ -266,6 +271,7 @@ void getrangeCommand(redisClient *c) {
     }
 }
 
+/* mget */
 void mgetCommand(redisClient *c) {
     int j;
 
@@ -322,6 +328,7 @@ void msetnxCommand(redisClient *c) {
     msetGenericCommand(c,1);
 }
 
+/* generic incr, decr */
 void incrDecrCommand(redisClient *c, long long incr) {
     long long value, oldvalue;
     robj *o, *new;
@@ -360,14 +367,17 @@ void incrDecrCommand(redisClient *c, long long incr) {
     addReply(c,shared.crlf);
 }
 
+/* incr */
 void incrCommand(redisClient *c) {
     incrDecrCommand(c,1);
 }
 
+/* decr */
 void decrCommand(redisClient *c) {
     incrDecrCommand(c,-1);
 }
 
+/* incrby */
 void incrbyCommand(redisClient *c) {
     long long incr;
 
@@ -375,6 +385,7 @@ void incrbyCommand(redisClient *c) {
     incrDecrCommand(c,incr);
 }
 
+/* decrby */
 void decrbyCommand(redisClient *c) {
     long long incr;
 
@@ -416,6 +427,7 @@ void incrbyfloatCommand(redisClient *c) {
     rewriteClientCommandArgument(c,2,new);
 }
 
+/* append */
 void appendCommand(redisClient *c) {
     size_t totlen;
     robj *o, *append;
@@ -449,6 +461,7 @@ void appendCommand(redisClient *c) {
     addReplyLongLong(c,totlen);
 }
 
+/* strlen */
 void strlenCommand(redisClient *c) {
     robj *o;
     if ((o = lookupKeyReadOrReply(c,c->argv[1],shared.czero)) == NULL ||

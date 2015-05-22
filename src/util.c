@@ -262,6 +262,7 @@ uint32_t digits10(uint64_t v) {
  *
  * Modified in order to handle signed integers since the original code was
  * designed for unsigned integers. */
+/* 返回转换后的字符串长度, 转换失败返回 0 */
 int ll2string(char* dst, size_t dstlen, long long svalue) {
     static const char digits[201] =
         "0001020304050607080910111213141516171819"

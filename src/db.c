@@ -41,6 +41,7 @@ void slotToKeyFlush(void);
  * C-level DB API
  *----------------------------------------------------------------------------*/
 
+/* 查找 key, 找到返回其 value 指针, 没找到返回 NULL */
 robj *lookupKey(redisDb *db, robj *key) {
     dictEntry *de = dictFind(db->dict,key->ptr);
     if (de) {
@@ -57,6 +58,7 @@ robj *lookupKey(redisDb *db, robj *key) {
     }
 }
 
+/* 查找 key, 会更新 stat_keyspace_hits, stat_keyspace_misses */
 robj *lookupKeyRead(redisDb *db, robj *key) {
     robj *val;
 
@@ -69,6 +71,7 @@ robj *lookupKeyRead(redisDb *db, robj *key) {
     return val;
 }
 
+/* 返回 key 对应的 value 指针, 不存在或 key 已过期则返回 NULL */
 robj *lookupKeyWrite(redisDb *db, robj *key) {
     expireIfNeeded(db,key);
     return lookupKey(db,key);
@@ -119,8 +122,10 @@ void dbOverwrite(redisDb *db, robj *key, robj *val) {
  * 3) The expire time of the key is reset (the key is made persistent). */
 void setKey(redisDb *db, robj *key, robj *val) {
     if (lookupKeyWrite(db,key) == NULL) {
+		/* key 不存在或已过期 */
         dbAdd(db,key,val);
     } else {
+		/* key 存在 */
         dbOverwrite(db,key,val);
     }
     incrRefCount(val);
@@ -819,6 +824,7 @@ void propagateExpire(redisDb *db, robj *key) {
     decrRefCount(argv[1]);
 }
 
+/* key 过期的话就从数据库中删除 */
 int expireIfNeeded(redisDb *db, robj *key) {
     mstime_t when = getExpire(db,key);
     mstime_t now;

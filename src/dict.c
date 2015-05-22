@@ -100,6 +100,7 @@ uint32_t dictGetHashFunctionSeed(void) {
  * 2. It will not produce the same results on little-endian and big-endian
  *    machines.
  */
+/* hash 函数, key 可以看成字符串, len 为字符串长度 */
 unsigned int dictGenHashFunction(const void *key, int len) {
     /* 'm' and 'r' are mixing constants generated offline.
      They're not really 'magic', they just happen to work well.  */
@@ -326,6 +327,7 @@ static void _dictRehashStep(dict *d) {
 }
 
 /* Add an element to the target hash table */
+/* 若 key 存在, 则返回 DICT_ERR */
 int dictAdd(dict *d, void *key, void *val)
 {
     dictEntry *entry = dictAddRaw(d,key);
@@ -562,6 +564,7 @@ long long dictFingerprint(dict *d) {
     return hash;
 }
 
+/* 返回 dict 迭代器, 从头开始迭代 dict, 使用 dictNext 返回元素 */
 dictIterator *dictGetIterator(dict *d)
 {
     dictIterator *iter = zmalloc(sizeof(*iter));

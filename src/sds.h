@@ -56,6 +56,7 @@ static inline size_t sdslen(const sds s) {
     return sh->len;
 }
 
+/* sds free 空间大小 */
 static inline size_t sdsavail(const sds s) {
     struct sdshdr *sh = (void*)(s-(sizeof(struct sdshdr)));
     return sh->free;

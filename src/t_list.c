@@ -36,6 +36,8 @@
 /* Check the argument length to see if it requires us to convert the ziplist
  * to a real list. Only check raw-encoded objects because integer encoded
  * objects are never too long. */
+/* 若 subject 为 ziplist 类型, 且 value 为字符串类型且其长度超过 ziplist 阈值,
+ * 则将 ziplist 转为 linked list 类型 */
 void listTypeTryConversion(robj *subject, robj *value) {
     if (subject->encoding != REDIS_ENCODING_ZIPLIST) return;
     if (sdsEncodedObject(value) &&
@@ -48,6 +50,10 @@ void listTypeTryConversion(robj *subject, robj *value) {
  *
  * There is no need for the caller to increment the refcount of 'value' as
  * the function takes care of it if needed. */
+/* list 底层由 ziplist 和 linked list 实现, 先是使用 ziplist, 超过一定限制
+ * 后 ziplist 转换为 linked list, 将元素 push 到 ziplist 时是不用增加其引用
+ * 的, 因为 ziplist 本质是一个字符串数组, 添加到 linked list 时则需要增加其
+ * 引用 */
 void listTypePush(robj *subject, robj *value, int where) {
     /* Check if we need to convert the ziplist */
     listTypeTryConversion(subject,value);
@@ -72,6 +78,7 @@ void listTypePush(robj *subject, robj *value, int where) {
     }
 }
 
+/* 返回 pop 值, where 控制 pop 方向 */
 robj *listTypePop(robj *subject, int where) {
     robj *value = NULL;
     if (subject->encoding == REDIS_ENCODING_ZIPLIST) {
@@ -120,6 +127,7 @@ unsigned long listTypeLength(robj *subject) {
 }
 
 /* Initialize an iterator at the specified index. */
+/* index 开始迭代位置, direction 迭代方向 */
 listTypeIterator *listTypeInitIterator(robj *subject, long index, unsigned char direction) {
     listTypeIterator *li = zmalloc(sizeof(listTypeIterator));
     li->subject = subject;
@@ -143,6 +151,8 @@ void listTypeReleaseIterator(listTypeIterator *li) {
 /* Stores pointer to current the entry in the provided entry structure
  * and advances the position of the iterator. Returns 1 when the current
  * entry is in fact an entry, 0 otherwise. */
+/* entry 保存当前迭代元素, li 前进一个元素位置;
+ * 迭代结束返回 0, 否则返回 1 */
 int listTypeNext(listTypeIterator *li, listTypeEntry *entry) {
     /* Protect from converting when iterating */
     redisAssert(li->subject->encoding == li->encoding);
@@ -173,6 +183,8 @@ int listTypeNext(listTypeIterator *li, listTypeEntry *entry) {
 }
 
 /* Return entry or NULL at the current position of the iterator. */
+/* 对于 ziplist, 创建字符串对象保存 entry 位置的值, 对于 linked list, 
+ * 增加对其结点值对象的引用数并返回该对象 */
 robj *listTypeGet(listTypeEntry *entry) {
     listTypeIterator *li = entry->li;
     robj *value = NULL;
@@ -198,11 +210,13 @@ robj *listTypeGet(listTypeEntry *entry) {
     return value;
 }
 
+/* entry 为插入位置, value 为代入元素, where 控制插入到插入位置之前还是之后 */
 void listTypeInsert(listTypeEntry *entry, robj *value, int where) {
     robj *subject = entry->li->subject;
     if (entry->li->encoding == REDIS_ENCODING_ZIPLIST) {
         value = getDecodedObject(value);
         if (where == REDIS_TAIL) {
+			/* 插入到元素之后, 也就是先一个元素之前 */
             unsigned char *next = ziplistNext(subject->ptr,entry->zi);
 
             /* When we insert after the current element, but the current element
@@ -242,6 +256,7 @@ int listTypeEqual(listTypeEntry *entry, robj *o) {
 }
 
 /* Delete the element pointed to. */
+/* 会更新迭代器 */
 void listTypeDelete(listTypeEntry *entry) {
     listTypeIterator *li = entry->li;
     if (li->encoding == REDIS_ENCODING_ZIPLIST) {
@@ -266,6 +281,8 @@ void listTypeDelete(listTypeEntry *entry) {
     }
 }
 
+/* subject 为 ziplist 类型, 将其转为 linked list, enc 为转换的目标类型, 
+ * 只支持转为 linked list, 为其他类型时报错 */
 void listTypeConvert(robj *subject, int enc) {
     listTypeIterator *li;
     listTypeEntry entry;
@@ -296,6 +313,7 @@ void pushGenericCommand(redisClient *c, int where) {
     int j, waiting = 0, pushed = 0;
     robj *lobj = lookupKeyWrite(c->db,c->argv[1]);
 
+	/* 对非 list 对象 push 报错 */
     if (lobj && lobj->type != REDIS_LIST) {
         addReply(c,shared.wrongtypeerr);
         return;
@@ -328,6 +346,8 @@ void rpushCommand(redisClient *c) {
     pushGenericCommand(c,REDIS_TAIL);
 }
 
+/* refval 为 NULL 时是 pushx 命令, 非 NULL 时为 insert 命令, 此时 refval
+ * 为 pivot 元素, val 为待插入元素, where 为插入方向 */
 void pushxGenericCommand(redisClient *c, robj *refval, robj *val, int where) {
     robj *subject;
     listTypeIterator *iter;
@@ -338,6 +358,7 @@ void pushxGenericCommand(redisClient *c, robj *refval, robj *val, int where) {
         checkType(c,subject,REDIS_LIST)) return;
 
     if (refval != NULL) {
+		/* linsert */
         /* We're not sure if this value can be inserted yet, but we cannot
          * convert the list inside the iterator. We don't want to loop over
          * the list twice (once to see if the value can be inserted and once
@@ -371,6 +392,7 @@ void pushxGenericCommand(redisClient *c, robj *refval, robj *val, int where) {
             return;
         }
     } else {
+		/* lpush, rpush */
         char *event = (where == REDIS_HEAD) ? "lpush" : "rpush";
 
         listTypePush(subject,val,where);
@@ -409,6 +431,7 @@ void llenCommand(redisClient *c) {
     addReplyLongLong(c,listTypeLength(o));
 }
 
+/* lindex */
 void lindexCommand(redisClient *c) {
     robj *o = lookupKeyReadOrReply(c,c->argv[1],shared.nullbulk);
     if (o == NULL || checkType(c,o,REDIS_LIST)) return;
@@ -448,6 +471,7 @@ void lindexCommand(redisClient *c) {
     }
 }
 
+/* lset key index value */
 void lsetCommand(redisClient *c) {
     robj *o = lookupKeyWriteOrReply(c,c->argv[1],shared.nokeyerr);
     if (o == NULL || checkType(c,o,REDIS_LIST)) return;
@@ -464,6 +488,7 @@ void lsetCommand(redisClient *c) {
         if (p == NULL) {
             addReply(c,shared.outofrangeerr);
         } else {
+			/* 先删再设置 */
             o->ptr = ziplistDelete(o->ptr,&p);
             value = getDecodedObject(value);
             o->ptr = ziplistInsert(o->ptr,p,value->ptr,sdslen(value->ptr));
@@ -491,6 +516,7 @@ void lsetCommand(redisClient *c) {
     }
 }
 
+/* 链表大小为 0 后将删除该链表 */
 void popGenericCommand(redisClient *c, int where) {
     robj *o = lookupKeyWriteOrReply(c,c->argv[1],shared.nullbulk);
     if (o == NULL || checkType(c,o,REDIS_LIST)) return;
@@ -522,6 +548,7 @@ void rpopCommand(redisClient *c) {
     popGenericCommand(c,REDIS_TAIL);
 }
 
+/* LRANGE key start stop */
 void lrangeCommand(redisClient *c) {
     robj *o;
     long start, end, llen, rangelen;
@@ -581,6 +608,7 @@ void lrangeCommand(redisClient *c) {
     }
 }
 
+/* LTRIM key start stop */
 void ltrimCommand(redisClient *c) {
     robj *o;
     long start, end, llen, j, ltrim, rtrim;
@@ -639,6 +667,7 @@ void ltrimCommand(redisClient *c) {
     addReply(c,shared.ok);
 }
 
+/* LREM key count value */
 void lremCommand(redisClient *c) {
     robj *subject, *obj;
     obj = c->argv[3] = tryObjectEncoding(c->argv[3]);
@@ -712,6 +741,7 @@ void rpoplpushHandlePush(redisClient *c, robj *dstkey, robj *dstobj, robj *value
     addReplyBulk(c,value);
 }
 
+/* RPOPLPUSH source destination */
 void rpoplpushCommand(redisClient *c) {
     robj *sobj, *value;
     if ((sobj = lookupKeyWriteOrReply(c,c->argv[1],shared.nullbulk)) == NULL ||
@@ -772,6 +802,8 @@ void rpoplpushCommand(redisClient *c) {
 
 /* Set a client in blocking mode for the specified key, with the specified
  * timeout */
+/* 使客户端 c 阻塞, 客户端等待 keys 数组内的 key, target 为 brpoplpush 命令
+ * 的 push 目标链表, 为 NULL 表示使用的的是 bpop 等命令 */
 void blockForKeys(redisClient *c, robj **keys, int numkeys, mstime_t timeout, robj *target) {
     dictEntry *de;
     list *l;
@@ -807,6 +839,7 @@ void blockForKeys(redisClient *c, robj **keys, int numkeys, mstime_t timeout, ro
 
 /* Unblock a client that's waiting in a blocking operation such as BLPOP.
  * You should never call this function directly, but unblockClient() instead. */
+/* client 等待的数据都到齐了, 将其 unblock, 也就是从对应的数据结构中将其移出 */
 void unblockClientWaitingData(redisClient *c) {
     dictEntry *de;
     dictIterator *di;
@@ -894,6 +927,7 @@ int serveClientBlockedOnList(redisClient *receiver, robj *key, robj *dstkey, red
         argv[0] = (where == REDIS_HEAD) ? shared.lpop :
                                           shared.rpop;
         argv[1] = key;
+		/* TODO 这个函数做什么? */
         propagate((where == REDIS_HEAD) ?
             server.lpopCommand : server.rpopCommand,
             db->id,argv,2,REDIS_PROPAGATE_AOF|REDIS_PROPAGATE_REPL);

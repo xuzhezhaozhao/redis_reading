@@ -38,6 +38,7 @@
  * by the user before to call AlFreeList().
  *
  * On error, NULL is returned. Otherwise the pointer to the new list. */
+/* 创建双向链表 */
 list *listCreate(void)
 {
     struct list *list;

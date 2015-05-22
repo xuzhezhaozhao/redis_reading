@@ -423,6 +423,7 @@ void dictListDestructor(void *privdata, void *val)
     listRelease((list*)val);
 }
 
+/* key1, key2 为 sds 字符串, 比较它们是否相等, 相等返回 1, 否则返回 0 */
 int dictSdsKeyCompare(void *privdata, const void *key1,
         const void *key2)
 {
@@ -498,13 +499,16 @@ int dictEncObjKeyCompare(void *privdata, const void *key1,
     return cmp;
 }
 
+/* hash 函数 */
 unsigned int dictEncObjHash(const void *key) {
     robj *o = (robj*) key;
 
     if (sdsEncodedObject(o)) {
+		/* 字符串 */
         return dictGenHashFunction(o->ptr, sdslen((sds)o->ptr));
     } else {
         if (o->encoding == REDIS_ENCODING_INT) {
+			/* 编码为整数的字符串, 先转为字符串再 hash */
             char buf[32];
             int len;
 
@@ -582,10 +586,12 @@ dictType commandTableDictType = {
 };
 
 /* Hash type hash table (note that small hashes are represented with ziplists) */
+/* 全局变量 */
 dictType hashDictType = {
     dictEncObjHash,             /* hash function */
     NULL,                       /* key dup */
     NULL,                       /* val dup */
+	/* 比较 key 是否相等 */
     dictEncObjKeyCompare,       /* key compare */
     dictRedisObjectDestructor,  /* key destructor */
     dictRedisObjectDestructor   /* val destructor */
@@ -648,6 +654,8 @@ dictType replScriptCacheDictType = {
     NULL                        /* val destructor */
 };
 
+/* dict 是否需要 resize, 元素使用率低于 10% 就会 resize, 每次 delete 操作之后
+ * 都会检测是否需要 resize */
 int htNeedsResize(dict *dict) {
     long long size, used;
 

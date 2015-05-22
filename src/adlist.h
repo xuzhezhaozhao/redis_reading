@@ -44,11 +44,12 @@ typedef struct listIter {
     int direction;
 } listIter;
 
+/* 双向链表 */
 typedef struct list {
     listNode *head;
     listNode *tail;
     void *(*dup)(void *ptr);
-	/* 用户定义的释放 listNode 的 value 域函数 */
+	/* 用户定义的释放 listNode value 域的函数 */
     void (*free)(void *ptr);
     int (*match)(void *ptr, void *key);
     unsigned long len;
