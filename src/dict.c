@@ -202,8 +202,8 @@ int dictResize(dict *d)
 }
 
 /* Expand or create the hash table */
-/* 扩大 d->ht[1] 表, 若当前处在 rehash 过程中, 则返回 DICT_ERR, 
- * 新表大小为大于 size 的最小 power of 2 */
+/* 若 d->ht[0] 为 NULL, 则为新建 hash table, 否则扩大 d->ht[1] 表, 若当前处
+ * 在 rehash 过程中, 则返回 DICT_ERR, 新表大小为大于 size 的最小 power of 2 */
 int dictExpand(dict *d, unsigned long size)
 {
     dictht n; /* the new hash table */
@@ -232,6 +232,7 @@ int dictExpand(dict *d, unsigned long size)
 
     /* Prepare a second hash table for incremental rehashing */
     d->ht[1] = n;
+	/* 启动 rehash 过程 */
     d->rehashidx = 0;
     return DICT_OK;
 }
@@ -870,6 +871,7 @@ static unsigned long rev(unsigned long v) {
  *    comment is supposed to help.
  */
  /* TODO */
+ /* scan 命令实现的核心就是它 */
 unsigned long dictScan(dict *d,
                        unsigned long v,
                        dictScanFunction *fn,

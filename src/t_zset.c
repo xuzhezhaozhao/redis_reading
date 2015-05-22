@@ -110,6 +110,7 @@ int zslRandomLevel(void) {
 }
 
 /* 参考这里的几个图: http://kenby.iteye.com/blog/1187303 */
+/* 返回插入结点 */
 zskiplistNode *zslInsert(zskiplist *zsl, double score, robj *obj) {
 	/* update[i] 为在第 i level 上插入位置(插在这个位置之后) */
     zskiplistNode *update[ZSKIPLIST_MAXLEVEL], *x;
@@ -655,6 +656,7 @@ zskiplistNode *zslLastInLexRange(zskiplist *zsl, zlexrangespec *range) {
  * Ziplist-backed sorted set API
  *----------------------------------------------------------------------------*/
 
+/* 从 sptr 指向的 ziplist entry 中获取 score */
 double zzlGetScore(unsigned char *sptr) {
     unsigned char *vstr;
     unsigned int vlen;
@@ -679,6 +681,7 @@ double zzlGetScore(unsigned char *sptr) {
 /* Return a ziplist element as a Redis string object.
  * This simple abstraction can be used to simplifies some code at the
  * cost of some performance. */
+/* 返回一个字符串对象 */
 robj *ziplistGetObject(unsigned char *sptr) {
     unsigned char *vstr;
     unsigned int vlen;
@@ -695,6 +698,7 @@ robj *ziplistGetObject(unsigned char *sptr) {
 }
 
 /* Compare element in sorted set with given element. */
+/* eptr 指向 sorted set 中元素, cstr 为给到元素, 用 memcpy 比较 */
 int zzlCompareElements(unsigned char *eptr, unsigned char *cstr, unsigned int clen) {
     unsigned char *vstr;
     unsigned int vlen;
@@ -709,18 +713,21 @@ int zzlCompareElements(unsigned char *eptr, unsigned char *cstr, unsigned int cl
         vstr = vbuf;
     }
 
+	/* vstr 保存 element 的字符串形式 */
     minlen = (vlen < clen) ? vlen : clen;
     cmp = memcmp(vstr,cstr,minlen);
     if (cmp == 0) return vlen-clen;
     return cmp;
 }
 
+/* 返回 zset 元素个数 (ziplist 表示的是 hash table, 所以是其长度除以 2) */
 unsigned int zzlLength(unsigned char *zl) {
     return ziplistLen(zl)/2;
 }
 
 /* Move to next entry based on the values in eptr and sptr. Both are set to
  * NULL when there is no next entry. */
+/* ziplist 表示的是 hast table, (eptr,  sptr) 表示一对 (key, value) */
 void zzlNext(unsigned char *zl, unsigned char **eptr, unsigned char **sptr) {
     unsigned char *_eptr, *_sptr;
     redisAssert(*eptr != NULL && *sptr != NULL);
@@ -793,6 +800,7 @@ unsigned char *zzlFirstInRange(unsigned char *zl, zrangespec *range) {
     if (!zzlIsInRange(zl,range)) return NULL;
 
     while (eptr != NULL) {
+		/* 注意 ziplist 为 small hash table */
         sptr = ziplistNext(zl,eptr);
         redisAssert(sptr != NULL);
 
@@ -935,6 +943,8 @@ unsigned char *zzlLastInLexRange(unsigned char *zl, zlexrangespec *range) {
     return NULL;
 }
 
+/* ele 为 sds, 在 ziplist 中查找 ele, 存在的话保存其对应的 score 在 *score 中, 
+ * 并返回查找到的对象位置指针, 不存在返回 NULL */
 unsigned char *zzlFind(unsigned char *zl, robj *ele, double *score) {
     unsigned char *eptr = ziplistIndex(zl,0), *sptr;
 
@@ -964,11 +974,13 @@ unsigned char *zzlDelete(unsigned char *zl, unsigned char *eptr) {
     unsigned char *p = eptr;
 
     /* TODO: add function to ziplist API to delete N elements from offset. */
+	/* __ziplistDelete 这个函数提供了这个功能, 稍微修改一下就可以 */
     zl = ziplistDelete(zl,&p);
     zl = ziplistDelete(zl,&p);
     return zl;
 }
 
+/* 辅助函数, 在 eptr 位置插入 (ele, score) pair, eptr 为 NULL 表示插入到最后 */
 unsigned char *zzlInsertAt(unsigned char *zl, unsigned char *eptr, robj *ele, double score) {
     unsigned char *sptr;
     char scorebuf[128];
@@ -1032,6 +1044,7 @@ unsigned char *zzlInsert(unsigned char *zl, robj *ele, double score) {
     return zl;
 }
 
+/* 删除序列内的元素对, *delete 保存删除的元素个数 */
 unsigned char *zzlDeleteRangeByScore(unsigned char *zl, zrangespec *range, unsigned long *deleted) {
     unsigned char *eptr, *sptr;
     double score;
@@ -1061,6 +1074,7 @@ unsigned char *zzlDeleteRangeByScore(unsigned char *zl, zrangespec *range, unsig
     return zl;
 }
 
+/* 删除序列内的元素对, *delete 保存删除的元素个数 */
 unsigned char *zzlDeleteRangeByLex(unsigned char *zl, zlexrangespec *range, unsigned long *deleted) {
     unsigned char *eptr, *sptr;
     unsigned long num = 0;
@@ -1113,6 +1127,7 @@ unsigned int zsetLength(robj *zobj) {
     return length;
 }
 
+/* ziplist 转 zset 或 zset 转 ziplist */
 void zsetConvert(robj *zobj, int encoding) {
     zset *zs;
     zskiplistNode *node, *next;
@@ -1130,6 +1145,7 @@ void zsetConvert(robj *zobj, int encoding) {
         if (encoding != REDIS_ENCODING_SKIPLIST)
             redisPanic("Unknown target encoding");
 
+		/* ziplist 转 zset */
         zs = zmalloc(sizeof(*zs));
         zs->dict = dictCreate(&zsetDictType,NULL);
         zs->zsl = zslCreate();
@@ -1139,6 +1155,8 @@ void zsetConvert(robj *zobj, int encoding) {
         sptr = ziplistNext(zl,eptr);
         redisAssertWithInfo(NULL,zobj,sptr != NULL);
 
+		/* 遍历 ziplist 中的 (element, score) pair, 将 (score, element) 插入
+		 * 到 skiplist, (element, score) 插入到 dict */
         while (eptr != NULL) {
             score = zzlGetScore(sptr);
             redisAssertWithInfo(NULL,zobj,ziplistGet(eptr,&vstr,&vlen,&vlong));
@@ -1245,6 +1263,7 @@ void zaddGenericCommand(redisClient *c, int incr) {
             /* Prefer non-encoded element when dealing with ziplists. */
             ele = c->argv[3+j*2];
             if ((eptr = zzlFind(zobj->ptr,ele,&curscore)) != NULL) {
+				/* 元素存在, 更新其 score */
                 if (incr) {
                     score += curscore;
                     if (isnan(score)) {
@@ -1261,6 +1280,7 @@ void zaddGenericCommand(redisClient *c, int incr) {
                     updated++;
                 }
             } else {
+				/* 元素不存在, 插入 */
                 /* Optimize: check if the element is too large or the list
                  * becomes too long *before* executing zzlInsert. */
                 zobj->ptr = zzlInsert(zobj->ptr,ele,score);
@@ -1279,6 +1299,7 @@ void zaddGenericCommand(redisClient *c, int incr) {
             ele = c->argv[3+j*2] = tryObjectEncoding(c->argv[3+j*2]);
             de = dictFind(zs->dict,ele);
             if (de != NULL) {
+				/* 元素存在 */
                 curobj = dictGetKey(de);
                 curscore = *(double*)dictGetVal(de);
 
@@ -1304,6 +1325,7 @@ void zaddGenericCommand(redisClient *c, int incr) {
                     updated++;
                 }
             } else {
+				/* 元素不存在 */
                 znode = zslInsert(zs->zsl,score,ele);
                 incrRefCount(ele); /* Inserted in skiplist. */
                 redisAssertWithInfo(c,NULL,dictAdd(zs->dict,ele,&znode->score) == DICT_OK);
@@ -1329,6 +1351,7 @@ cleanup:
     }
 }
 
+/* ZADD key score member [score member ...] */
 void zaddCommand(redisClient *c) {
     zaddGenericCommand(c,0);
 }

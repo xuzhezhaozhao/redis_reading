@@ -247,6 +247,7 @@ robj *createZsetObject(void) {
     return o;
 }
 
+/* small zset, 用 ziplist 节省内存 */
 robj *createZsetZiplistObject(void) {
     unsigned char *zl = ziplistNew();
     robj *o = createObject(REDIS_ZSET,zl);

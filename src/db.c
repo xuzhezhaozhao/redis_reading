@@ -164,6 +164,7 @@ robj *dbRandomKey(redisDb *db) {
 }
 
 /* Delete a key, value, and associated expiration entry if any, from the DB */
+/* 成功返回 1, 否则 0 */
 int dbDelete(redisDb *db, robj *key) {
     /* Deleting an entry from the expires dict will not free the sds of
      * the key, because it is shared with the main dictionary. */
@@ -425,11 +426,15 @@ int parseScanCursorOrReply(redisClient *c, robj *o, unsigned long *cursor) {
  *
  * In the case of a Hash object the function returns both the field and value
  * of every element on the Hash. */
+/* o 为 NULL 时为 scan 命令, 迭代的是 db keys, o 还可以为 set, hash, zset
+ * 类型 */
 void scanGenericCommand(redisClient *c, robj *o, unsigned long cursor) {
     int i, j;
     list *keys = listCreate();
     listNode *node, *nextnode;
+	/* 默认值为 10 */
     long count = 10;
+	/* match pattern */
     sds pat;
     int patlen, use_pattern = 0;
     dict *ht;
@@ -510,11 +515,14 @@ void scanGenericCommand(redisClient *c, robj *o, unsigned long cursor) {
         privdata[0] = keys;
         privdata[1] = o;
         do {
+			/* 主要利用的是 dictScan 函数 */
+			/* TODO */
             cursor = dictScan(ht, cursor, scanCallback, privdata);
         } while (cursor &&
               maxiterations-- &&
               listLength(keys) < (unsigned long)count);
     } else if (o->type == REDIS_SET) {
+		/* intset 类型, 一次遍历完 */
         int pos = 0;
         int64_t ll;
 
@@ -522,6 +530,7 @@ void scanGenericCommand(redisClient *c, robj *o, unsigned long cursor) {
             listAddNodeTail(keys,createStringObjectFromLongLong(ll));
         cursor = 0;
     } else if (o->type == REDIS_HASH || o->type == REDIS_ZSET) {
+		/* ziplist 类型, 一次遍历完 */
         unsigned char *p = ziplistIndex(o->ptr,0);
         unsigned char *vstr;
         unsigned int vlen;
@@ -548,6 +557,7 @@ void scanGenericCommand(redisClient *c, robj *o, unsigned long cursor) {
 
         /* Filter element if it does not match the pattern. */
         if (!filter && use_pattern) {
+			/* 进行字符串匹配 */
             if (sdsEncodedObject(kobj)) {
                 if (!stringmatchlen(pat, patlen, kobj->ptr, sdslen(kobj->ptr), 0))
                     filter = 1;
@@ -566,6 +576,7 @@ void scanGenericCommand(redisClient *c, robj *o, unsigned long cursor) {
 
         /* Remove the element and its associted value if needed. */
         if (filter) {
+			/* 当前元素不匹配, 需从结果中删除 */
             decrRefCount(kobj);
             listDelNode(keys, node);
         }
@@ -824,7 +835,7 @@ void propagateExpire(redisDb *db, robj *key) {
     decrRefCount(argv[1]);
 }
 
-/* key 过期的话就从数据库中删除 */
+/* key 过期的话就从数据库中删除, 成功返回 1, 否则 0 */
 int expireIfNeeded(redisDb *db, robj *key) {
     mstime_t when = getExpire(db,key);
     mstime_t now;

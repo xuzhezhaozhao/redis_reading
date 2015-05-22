@@ -44,6 +44,7 @@
 #include "sha1.h"
 
 /* Glob-style pattern matching. */
+/* scan 命令的 match 部分用到了这个功能 */
 int stringmatchlen(const char *pattern, int patternLen,
         const char *string, int stringLen, int nocase)
 {

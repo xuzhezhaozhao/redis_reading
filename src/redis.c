@@ -526,6 +526,7 @@ unsigned int dictEncObjHash(const void *key) {
 }
 
 /* Sets type hash table */
+/* 全局变量 */
 dictType setDictType = {
     dictEncObjHash,            /* hash function */
     NULL,                      /* key dup */

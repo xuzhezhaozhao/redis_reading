@@ -184,9 +184,9 @@ typedef long long mstime_t; /* millisecond time type. */
 #define REDIS_STRING 0
 /* list 双向链表, ziplist */
 #define REDIS_LIST 1
-/* dict hash table (HT), intset */
+/* dict hash table (HT), intset (元素不为整数时会转换为 dict) */
 #define REDIS_SET 2
-/* skiplist (这中情况下还包含一个 dict), ziplist */
+/* 有序集合, skiplist (zset 类型, 还包含一个 dict), ziplist */
 #define REDIS_ZSET 3
 /* ziplist (ziplist 属于两个不同的类型, 还属于 list), dict (由 ziplist 转换) */
 #define REDIS_HASH 4
@@ -592,6 +592,7 @@ struct saveparam {
 struct sharedObjectsStruct {
     robj *crlf, *ok, *err, *emptybulk, *czero, *cone, *cnegone, *pong, *space,
     *colon, *nullbulk, *nullmultibulk, *queued,
+	/* emptymultibulk: '(empty list or set)' */
     *emptymultibulk, *wrongtypeerr, *nokeyerr, *syntaxerr, *sameobjecterr,
     *outofrangeerr, *noscripterr, *loadingerr, *slowscripterr, *bgsaveerr,
     *masterdownerr, *roslaveerr, *execaborterr, *noautherr, *noreplicaserr,
@@ -893,7 +894,9 @@ struct redisServer {
     size_t list_max_ziplist_entries;
 	/* 若插入到 ziplist 的 value 长度超过这个值就要进行转换为 real list */
     size_t list_max_ziplist_value;
+	/* inset 中最大元素数量, 超过这个数量将转换为 dict */
     size_t set_max_intset_entries;
+	/* ziplist 作为 small zset 的限制 */
     size_t zset_max_ziplist_entries;
     size_t zset_max_ziplist_value;
 	/* HyperLogLog 结构从 sparse 到 dense 转换的空间大小临界值 */
@@ -1004,10 +1007,14 @@ typedef struct {
 } listTypeEntry;
 
 /* Structure to hold set iteration abstraction. */
+/* set 有 intset 和 dict 两种表示方法 */
 typedef struct {
+	/* 迭代对象 */
     robj *subject;
     int encoding;
+	/* intset, 初始为 0 */
     int ii; /* intset iterator */
+	/* dict */
     dictIterator *di;
 } setTypeIterator;
 

@@ -44,6 +44,7 @@ robj *setTypeCreate(robj *value) {
     return createSetObject();
 }
 
+/* value 不为整数时会转为 dict, 成功返回 1, value 存在返回 0 */
 int setTypeAdd(robj *subject, robj *value) {
     long long llval;
     if (subject->encoding == REDIS_ENCODING_HT) {
@@ -78,6 +79,7 @@ int setTypeAdd(robj *subject, robj *value) {
     return 0;
 }
 
+/* 可能引发 hash table 的 resize, 删除成功返回 1, 否则返回 0 */
 int setTypeRemove(robj *setobj, robj *value) {
     long long llval;
     if (setobj->encoding == REDIS_ENCODING_HT) {
@@ -97,6 +99,7 @@ int setTypeRemove(robj *setobj, robj *value) {
     return 0;
 }
 
+/* 判断 value 是否存在 set 中 */
 int setTypeIsMember(robj *subject, robj *value) {
     long long llval;
     if (subject->encoding == REDIS_ENCODING_HT) {
@@ -111,6 +114,7 @@ int setTypeIsMember(robj *subject, robj *value) {
     return 0;
 }
 
+/* 初始化 set 迭代器 */
 setTypeIterator *setTypeInitIterator(robj *subject) {
     setTypeIterator *si = zmalloc(sizeof(setTypeIterator));
     si->subject = subject;
@@ -142,6 +146,8 @@ void setTypeReleaseIterator(setTypeIterator *si) {
  * When there are no longer elements -1 is returned.
  * Returned objects ref count is not incremented, so this function is
  * copy on write friendly. */
+/* 根据迭代器返回 set 中元素, 返回元素报错在 objele 或 llele 中 迭代器加 1,
+ * 没有元素了返回 -1, 否则返回 set 编码 */
 int setTypeNext(setTypeIterator *si, robj **objele, int64_t *llele) {
     if (si->encoding == REDIS_ENCODING_HT) {
         dictEntry *de = dictNext(si->di);
@@ -161,6 +167,7 @@ int setTypeNext(setTypeIterator *si, robj **objele, int64_t *llele) {
  *
  * This function is the way to go for write operations where COW is not
  * an issue as the result will be anyway of incrementing the ref count. */
+/* 若为 intset 返回一个新创建的对象, 若为 dict, 返回共享对象, 且引用加 1 */
 robj *setTypeNextObject(setTypeIterator *si) {
     int64_t intele;
     robj *objele;
@@ -218,6 +225,7 @@ unsigned long setTypeSize(robj *subject) {
 /* Convert the set to specified encoding. The resulting dict (when converting
  * to a hash table) is presized to hold the number of elements in the original
  * set. */
+/* setobj 为 intset 编码 */
 void setTypeConvert(robj *setobj, int enc) {
     setTypeIterator *si;
     redisAssertWithInfo(NULL,setobj,setobj->type == REDIS_SET &&
@@ -229,6 +237,7 @@ void setTypeConvert(robj *setobj, int enc) {
         robj *element;
 
         /* Presize the dict to avoid rehashing */
+		/* 创建 hash table */
         dictExpand(d,intsetLen(setobj->ptr));
 
         /* To add the elements we extract integers and create redis objects */
@@ -247,12 +256,14 @@ void setTypeConvert(robj *setobj, int enc) {
     }
 }
 
+/* SADD key member [member ...] */
 void saddCommand(redisClient *c) {
     robj *set;
     int j, added = 0;
 
     set = lookupKeyWrite(c->db,c->argv[1]);
     if (set == NULL) {
+		/* 新建 set */
         set = setTypeCreate(c->argv[2]);
         dbAdd(c->db,c->argv[1],set);
     } else {
@@ -274,6 +285,7 @@ void saddCommand(redisClient *c) {
     addReplyLongLong(c,added);
 }
 
+/* SREM key member [member ...] */
 void sremCommand(redisClient *c) {
     robj *set;
     int j, deleted = 0, keyremoved = 0;
@@ -302,6 +314,7 @@ void sremCommand(redisClient *c) {
     addReplyLongLong(c,deleted);
 }
 
+/* SMOVE source destination member */
 void smoveCommand(redisClient *c) {
     robj *srcset, *dstset, *ele;
     srcset = lookupKeyWrite(c->db,c->argv[1]);
@@ -368,6 +381,7 @@ void sismemberCommand(redisClient *c) {
         addReply(c,shared.czero);
 }
 
+/* Returns the set cardinality (number of elements) of the set stored at key. */
 void scardCommand(redisClient *c) {
     robj *o;
 
@@ -377,6 +391,7 @@ void scardCommand(redisClient *c) {
     addReplyLongLong(c,setTypeSize(o));
 }
 
+/* 随机 pop 元素 */
 void spopCommand(redisClient *c) {
     robj *set, *ele, *aux;
     int64_t llele;
@@ -418,6 +433,7 @@ void spopCommand(redisClient *c) {
  * implementation for more info. */
 #define SRANDMEMBER_SUB_STRATEGY_MUL 3
 
+/* 出于效率的考虑, 一共分为了 4 种情况 */
 void srandmemberWithCountCommand(redisClient *c) {
     long l;
     unsigned long count, size;
@@ -485,6 +501,7 @@ void srandmemberWithCountCommand(redisClient *c) {
      * This is done because if the number of requsted elements is just
      * a bit less than the number of elements in the set, the natural approach
      * used into CASE 3 is highly inefficient. */
+	/* 需要的元素数量大于总数的 1/3 */
     if (count*SRANDMEMBER_SUB_STRATEGY_MUL > size) {
         setTypeIterator *si;
 
@@ -551,6 +568,7 @@ void srandmemberWithCountCommand(redisClient *c) {
     }
 }
 
+/* SRANDMEMBER key [count] */
 void srandmemberCommand(redisClient *c) {
     robj *set, *ele;
     int64_t llele;
@@ -575,6 +593,7 @@ void srandmemberCommand(redisClient *c) {
     }
 }
 
+/* 辅助函数, 用于 qsort 排序的比较函数 */
 int qsortCompareSetsByCardinality(const void *s1, const void *s2) {
     return setTypeSize(*(robj**)s1)-setTypeSize(*(robj**)s2);
 }
@@ -587,7 +606,9 @@ int qsortCompareSetsByRevCardinality(const void *s1, const void *s2) {
     return  (o2 ? setTypeSize(o2) : 0) - (o1 ? setTypeSize(o1) : 0);
 }
 
+/* SINTER key [key ...] 取集合交集*/
 void sinterGenericCommand(redisClient *c, robj **setkeys, unsigned long setnum, robj *dstkey) {
+	/* 保存所有的集合对象 */
     robj **sets = zmalloc(sizeof(robj*)*setnum);
     setTypeIterator *si;
     robj *eleobj, *dstset = NULL;
@@ -596,11 +617,13 @@ void sinterGenericCommand(redisClient *c, robj **setkeys, unsigned long setnum, 
     unsigned long j, cardinality = 0;
     int encoding;
 
+	/* 检查参数 */
     for (j = 0; j < setnum; j++) {
         robj *setobj = dstkey ?
             lookupKeyWrite(c->db,setkeys[j]) :
             lookupKeyRead(c->db,setkeys[j]);
         if (!setobj) {
+			/* 集合不存在 */
             zfree(sets);
             if (dstkey) {
                 if (dbDelete(c->db,dstkey)) {
@@ -614,6 +637,7 @@ void sinterGenericCommand(redisClient *c, robj **setkeys, unsigned long setnum, 
             return;
         }
         if (checkType(c,setobj,REDIS_SET)) {
+			/* 类型不是 set */
             zfree(sets);
             return;
         }
