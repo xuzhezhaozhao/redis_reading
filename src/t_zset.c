@@ -1360,6 +1360,7 @@ void zincrbyCommand(redisClient *c) {
     zaddGenericCommand(c,1);
 }
 
+/* ZREM key member [member ...] */
 void zremCommand(redisClient *c) {
     robj *key = c->argv[1];
     robj *zobj;
@@ -1536,22 +1537,29 @@ void zremrangebylexCommand(redisClient *c) {
     zremrangeGenericCommand(c,ZRANGE_LEX);
 }
 
+/* set 迭代器 */
 typedef struct {
+	/* 迭代对象 */
     robj *subject;
     int type; /* Set, sorted set */
     int encoding;
+	/* union 操作时的权重 */
     double weight;
 
     union {
         /* Set iterators. */
         union _iterset {
             struct {
+				/* intset 起始地址 */
                 intset *is;
+				/* 当前迭代位置 */
                 int ii;
             } is;
             struct {
                 dict *dict;
+				/* dict 迭代器 */
                 dictIterator *di;
+				/* 当前 entry, 可以直接用, 不用 next */
                 dictEntry *de;
             } ht;
         } set;
@@ -1559,11 +1567,14 @@ typedef struct {
         /* Sorted set iterators. */
         union _iterzset {
             struct {
+				/* ziplist */
                 unsigned char *zl;
+				/* 当前 (element, score) pair */
                 unsigned char *eptr, *sptr;
             } zl;
             struct {
                 zset *zs;
+				/* 当前结点 */
                 zskiplistNode *node;
             } sl;
         } zset;
@@ -1583,18 +1594,25 @@ typedef struct {
 
 /* Store value retrieved from the iterator. */
 typedef struct {
+	/* 值可为上面的三个宏 */
     int flags;
     unsigned char _buf[32]; /* Private buffer. */
+	/* set 时为 dict key, zset 时为 element, flags 为 OPVAL_DIRTY_ROBJ 时表
+	 * 示这个对象需要释放, 即引用减一 */
     robj *ele;
+	/* zset(ziplist) */
     unsigned char *estr;
     unsigned int elen;
+	/* intset 中元素, 或为由 ele, estr 转换来的(flags 为 OPVAL_VALID_LL 时) */
     long long ell;
+	/* zset, 为 set 时这个值为 1.0 */
     double score;
 } zsetopval;
 
 typedef union _iterset iterset;
 typedef union _iterzset iterzset;
 
+/* 初始化 set/sorted set 迭代器 */
 void zuiInitIterator(zsetopsrc *op) {
     if (op->subject == NULL)
         return;
@@ -1631,6 +1649,7 @@ void zuiInitIterator(zsetopsrc *op) {
     }
 }
 
+/* 仅仅释放迭代器内部指针指向的资源, 并不释放迭代器本身 */
 void zuiClearIterator(zsetopsrc *op) {
     if (op->subject == NULL)
         return;
@@ -1658,6 +1677,7 @@ void zuiClearIterator(zsetopsrc *op) {
     }
 }
 
+/* 迭代器迭代对象的元素个数 */
 int zuiLength(zsetopsrc *op) {
     if (op->subject == NULL)
         return 0;
@@ -1688,6 +1708,7 @@ int zuiLength(zsetopsrc *op) {
 /* Check if the current value is valid. If so, store it in the passed structure
  * and move to the next element. If not valid, this means we have reached the
  * end of the structure and can abort. */
+/* 没结束返回 1, 否则 0 */
 int zuiNext(zsetopsrc *op, zsetopval *val) {
     if (op->subject == NULL)
         return 0;
@@ -1695,6 +1716,7 @@ int zuiNext(zsetopsrc *op, zsetopval *val) {
     if (val->flags & OPVAL_DIRTY_ROBJ)
         decrRefCount(val->ele);
 
+	/* 清 0 */
     memset(val,0,sizeof(zsetopval));
 
     if (op->type == REDIS_SET) {
@@ -1748,6 +1770,9 @@ int zuiNext(zsetopsrc *op, zsetopval *val) {
     return 1;
 }
 
+/* 获取 long long, 试图将 ele 或 eptr 转为 long long, 设置 flags 的 
+ * OPVAL_DIRTY_LL, 转换成功或者 ell 本身就有效则设置 flags 的 
+ * OPVAL_VALID_LL */
 int zuiLongLongFromValue(zsetopval *val) {
     if (!(val->flags & OPVAL_DIRTY_LL)) {
         val->flags |= OPVAL_DIRTY_LL;
@@ -1767,12 +1792,14 @@ int zuiLongLongFromValue(zsetopval *val) {
                 val->flags |= OPVAL_VALID_LL;
         } else {
             /* The long long was already set, flag as valid. */
+			/* 说明前一次迭代是从 intset 中取值 */
             val->flags |= OPVAL_VALID_LL;
         }
     }
     return val->flags & OPVAL_VALID_LL;
 }
 
+/* 获取对象, ele 为 NULL 则从 estr 或 ell 创建字符对象 */
 robj *zuiObjectFromValue(zsetopval *val) {
     if (val->ele == NULL) {
         if (val->estr != NULL) {
@@ -1785,9 +1812,11 @@ robj *zuiObjectFromValue(zsetopval *val) {
     return val->ele;
 }
 
+/* ele | ell 转为字符串, estr 指向该字符串 */
 int zuiBufferFromValue(zsetopval *val) {
     if (val->estr == NULL) {
         if (val->ele != NULL) {
+			/* 将 ele 字符串放到 _buf 中 */
             if (val->ele->encoding == REDIS_ENCODING_INT) {
                 val->elen = ll2string((char*)val->_buf,sizeof(val->_buf),(long)val->ele->ptr);
                 val->estr = val->_buf;
@@ -1807,6 +1836,8 @@ int zuiBufferFromValue(zsetopval *val) {
 
 /* Find value pointed to by val in the source pointer to by op. When found,
  * return 1 and store its score in target. Return 0 otherwise. */
+/* op 中保存了迭代对象, 从该迭代对象中查找 val 元素, 迭代对象为 set, 则置
+ * *score = 1.0, 为 zset 则置其为对应元素的 score */
 int zuiFind(zsetopsrc *op, zsetopval *val, double *score) {
     if (op->subject == NULL)
         return 0;
@@ -1860,6 +1891,7 @@ int zuiFind(zsetopsrc *op, zsetopval *val, double *score) {
     }
 }
 
+/* 辅助函数, 用于 qsort */
 int zuiCompareByCardinality(const void *s1, const void *s2) {
     return zuiLength((zsetopsrc*)s1) - zuiLength((zsetopsrc*)s2);
 }
@@ -1869,6 +1901,7 @@ int zuiCompareByCardinality(const void *s1, const void *s2) {
 #define REDIS_AGGR_MAX 3
 #define zunionInterDictValue(_e) (dictGetVal(_e) == NULL ? 1.0 : *(double*)dictGetVal(_e))
 
+/* 辅助函数, zunion 的操作方式 */
 inline static void zunionInterAggregate(double *target, double val, int aggregate) {
     if (aggregate == REDIS_AGGR_SUM) {
         *target = *target + val;
@@ -1944,6 +1977,7 @@ void zunionInterGenericCommand(redisClient *c, robj *dstkey, int op) {
         while (remaining) {
             if (remaining >= (setnum + 1) && !strcasecmp(c->argv[j]->ptr,"weights")) {
                 j++; remaining--;
+				/* 获取用户指定的权重 */
                 for (i = 0; i < setnum; i++, j++, remaining--) {
                     if (getDoubleFromObjectOrReply(c,c->argv[j],&src[i].weight,
                             "weight value is not a float") != REDIS_OK)
@@ -2127,10 +2161,12 @@ void zunionInterGenericCommand(redisClient *c, robj *dstkey, int op) {
     zfree(src);
 }
 
+/* ZUNIONSTORE destination numkeys key [key ...] [WEIGHTS weight [weight ...]] [AGGREGATE SUM|MIN|MAX] */
 void zunionstoreCommand(redisClient *c) {
     zunionInterGenericCommand(c,c->argv[1], REDIS_OP_UNION);
 }
 
+/* ZINTERSTORE destination numkeys key [key ...] [WEIGHTS weight [weight ...]] [AGGREGATE SUM|MIN|MAX] */
 void zinterstoreCommand(redisClient *c) {
     zunionInterGenericCommand(c,c->argv[1], REDIS_OP_INTER);
 }
@@ -2237,6 +2273,7 @@ void zrangeGenericCommand(redisClient *c, int reverse) {
     }
 }
 
+/* ZRANGE key start stop [WITHSCORES] */
 void zrangeCommand(redisClient *c) {
     zrangeGenericCommand(c,0);
 }
@@ -2440,6 +2477,7 @@ void zrevrangebyscoreCommand(redisClient *c) {
     genericZrangebyscoreCommand(c,1);
 }
 
+/* ZCOUNT key min max */
 void zcountCommand(redisClient *c) {
     robj *key = c->argv[1];
     robj *zobj;
@@ -2883,6 +2921,7 @@ void zrankGenericCommand(redisClient *c, int reverse) {
     }
 }
 
+/* ZRANK key member */
 void zrankCommand(redisClient *c) {
     zrankGenericCommand(c, 0);
 }
