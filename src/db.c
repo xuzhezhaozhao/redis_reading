@@ -71,7 +71,8 @@ robj *lookupKeyRead(redisDb *db, robj *key) {
     return val;
 }
 
-/* 返回 key 对应的 value 指针, 不存在或 key 已过期则返回 NULL */
+/* 返回 key 对应的 value 指针, 不存在或 key 已过期则返回 NULL, 与 read 版本的
+ * 区别是不会更新 hits 和 misses */
 robj *lookupKeyWrite(redisDb *db, robj *key) {
     expireIfNeeded(db,key);
     return lookupKey(db,key);
@@ -98,6 +99,7 @@ void dbAdd(redisDb *db, robj *key, robj *val) {
     int retval = dictAdd(db->dict, copy, val);
 
     redisAssertWithInfo(NULL,key,retval == REDIS_OK);
+	/* 通过 signal 机制来 unblock BLPOP */
     if (val->type == REDIS_LIST) signalListAsReady(db, key);
     if (server.cluster_enabled) slotToKeyAdd(key);
  }
@@ -133,6 +135,7 @@ void setKey(redisDb *db, robj *key, robj *val) {
     signalModifiedKey(db,key);
 }
 
+/* 判断键是否存在 */
 int dbExists(redisDb *db, robj *key) {
     return dictFind(db->dict,key->ptr) != NULL;
 }
@@ -215,6 +218,7 @@ robj *dbUnshareStringValue(redisDb *db, robj *key, robj *o) {
     return o;
 }
 
+/* 清空所有数据库, 返回清除的所有的元素个数 */
 long long emptyDb(void(callback)(void*)) {
     int j;
     long long removed = 0;
@@ -244,6 +248,7 @@ int selectDb(redisClient *c, int id) {
  * Every time a DB is flushed the function signalFlushDb() is called.
  *----------------------------------------------------------------------------*/
 
+/* 钩子函数 */
 void signalModifiedKey(redisDb *db, robj *key) {
     touchWatchedKey(db,key);
 }
@@ -256,6 +261,7 @@ void signalFlushedDb(int dbid) {
  * Type agnostic commands operating on the key space
  *----------------------------------------------------------------------------*/
 
+/* flush db, 然后清空 db->dict, db->expires */
 void flushdbCommand(redisClient *c) {
     server.dirty += dictSize(c->db->dict);
     signalFlushedDb(c->db->id);
@@ -270,6 +276,7 @@ void flushallCommand(redisClient *c) {
     server.dirty += emptyDb(NULL);
     addReply(c,shared.ok);
     if (server.rdb_child_pid != -1) {
+		/* 给进程发送信号 */
         kill(server.rdb_child_pid,SIGUSR1);
         rdbRemoveTempFile(server.rdb_child_pid);
     }
@@ -283,6 +290,7 @@ void flushallCommand(redisClient *c) {
     server.dirty++;
 }
 
+/* DEL key [key ...] */
 void delCommand(redisClient *c) {
     int deleted = 0, j;
 
@@ -299,6 +307,7 @@ void delCommand(redisClient *c) {
     addReplyLongLong(c,deleted);
 }
 
+/* EXISTS key */
 void existsCommand(redisClient *c) {
     expireIfNeeded(c->db,c->argv[1]);
     if (dbExists(c->db,c->argv[1])) {
@@ -308,6 +317,7 @@ void existsCommand(redisClient *c) {
     }
 }
 
+/* SELECT index */
 void selectCommand(redisClient *c) {
     long id;
 
@@ -326,6 +336,7 @@ void selectCommand(redisClient *c) {
     }
 }
 
+/* RANDOMKEY */
 void randomkeyCommand(redisClient *c) {
     robj *key;
 
@@ -338,6 +349,7 @@ void randomkeyCommand(redisClient *c) {
     decrRefCount(key);
 }
 
+/* KEYS pattern */
 void keysCommand(redisClient *c) {
     dictIterator *di;
     dictEntry *de;

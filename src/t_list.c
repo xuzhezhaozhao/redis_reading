@@ -869,13 +869,14 @@ void unblockClientWaitingData(redisClient *c) {
     }
 }
 
-/* If the specified key has clients blocked waiting for list pushes, this
+/* if the specified key has clients blocked waiting for list pushes, this
  * function will put the key reference into the server.ready_keys list.
- * Note that db->ready_keys is a hash table that allows us to avoid putting
+ * note that db->ready_keys is a hash table that allows us to avoid putting
  * the same key again and again in the list in case of multiple pushes
- * made by a script or in the context of MULTI/EXEC.
+ * made by a script or in the context of multi/exec.
  *
- * The list will be finally processed by handleClientsBlockedOnLists() */
+ * the list will be finally processed by handleclientsblockedonlists() */
+/* 在 db.c 的 dbAdd 函数中可能会调用 */
 void signalListAsReady(redisDb *db, robj *key) {
     readyList *rl;
 

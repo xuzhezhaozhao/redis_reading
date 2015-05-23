@@ -258,6 +258,7 @@ void unwatchAllKeys(redisClient *c) {
 
 /* "Touch" a key, so that if this key is being WATCHed by some client the
  * next EXEC will fail. */
+/* 在 db.c signalModifiedKey 钩子函数被调用 */
 void touchWatchedKey(redisDb *db, robj *key) {
     list *clients;
     listIter li;
