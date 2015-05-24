@@ -688,6 +688,7 @@ void shutdownCommand(redisClient *c) {
     addReplyError(c,"Errors trying to SHUTDOWN. Check logs.");
 }
 
+/* nx 控制是否 overwrite */
 void renameGenericCommand(redisClient *c, int nx) {
     robj *o;
     long long expire;
@@ -704,6 +705,7 @@ void renameGenericCommand(redisClient *c, int nx) {
     incrRefCount(o);
     expire = getExpire(c->db,c->argv[1]);
     if (lookupKeyWrite(c->db,c->argv[2]) != NULL) {
+		/* newkey exists */
         if (nx) {
             decrRefCount(o);
             addReply(c,shared.czero);
@@ -734,6 +736,7 @@ void renamenxCommand(redisClient *c) {
     renameGenericCommand(c,1);
 }
 
+/* MOVE key db */
 void moveCommand(redisClient *c) {
     robj *o;
     redisDb *src, *dst;
@@ -1039,6 +1042,7 @@ int *getKeysUsingCommandTable(struct redisCommand *cmd,robj **argv, int argc, in
  *
  * This function uses the command table if a command-specific helper function
  * is not required, otherwise it calls the command-specific function. */
+/* COMMAND GETKEYS */
 int *getKeysFromCommand(struct redisCommand *cmd, robj **argv, int argc, int *numkeys) {
     if (cmd->getkeys_proc) {
         return cmd->getkeys_proc(cmd,argv,argc,numkeys);
