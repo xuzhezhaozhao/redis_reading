@@ -196,6 +196,7 @@ typedef long long mstime_t; /* millisecond time type. */
  * internally represented in multiple ways. The 'encoding' field of the object
  * is set to one of this fields for this object. */
 #define REDIS_ENCODING_RAW 0     /* Raw representation */
+/* ptr 域保存其整数值, 字符串就是这个整数的字符串形式 */
 #define REDIS_ENCODING_INT 1     /* Encoded as integer */
 /* dict */
 #define REDIS_ENCODING_HT 2      /* Encoded as hash table */
@@ -807,6 +808,7 @@ struct redisServer {
     struct saveparam *saveparams;   /* Save points array for RDB */
     int saveparamslen;              /* Number of saving points */
     char *rdb_filename;             /* Name of RDB file */
+	/* 控制是否对字符串进行压缩 */
     int rdb_compression;            /* Use compression in RDB? */
     int rdb_checksum;               /* Use RDB checksum? */
     time_t lastsave;                /* Unix time of last successful save */
