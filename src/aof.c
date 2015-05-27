@@ -27,6 +27,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+/* 参考: http://redis.io/topics/persistence */
+
 #include "redis.h"
 #include "bio.h"
 #include "rio.h"
@@ -59,6 +61,7 @@ void aofClosePipes(void);
 #define AOF_RW_BUF_BLOCK_SIZE (1024*1024*10)    /* 10 MB per block */
 
 typedef struct aofrwblock {
+	/* used + free == AOF_RW_BUF_BLOCK_SIZE */
     unsigned long used, free;
     char buf[AOF_RW_BUF_BLOCK_SIZE];
 } aofrwblock;
@@ -160,6 +163,7 @@ void aofRewriteBufferAppend(unsigned char *s, unsigned long len) {
 
     /* Install a file event to send data to the rewrite child if there is
      * not one already. */
+	/* TODO xzz */
     if (aeGetFileEvents(server.el,server.aof_pipe_write_data_to_child) == 0) {
         aeCreateFileEvent(server.el, server.aof_pipe_write_data_to_child,
             AE_WRITABLE, aofChildWriteDiffData, NULL);

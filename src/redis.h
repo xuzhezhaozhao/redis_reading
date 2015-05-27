@@ -776,6 +776,7 @@ struct redisServer {
     off_t aof_current_size;         /* AOF current size. */
     int aof_rewrite_scheduled;      /* Rewrite once BGSAVE terminates. */
     pid_t aof_child_pid;            /* PID if rewriting process */
+	/* 结点为 aofrwblock 类型, aof.c */
     list *aof_rewrite_buf_blocks;   /* Hold changes during an AOF rewrite. */
     sds aof_buf;      /* AOF buffer, written before entering the event loop */
     int aof_fd;       /* File descriptor of currently selected AOF file */

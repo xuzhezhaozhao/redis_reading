@@ -46,7 +46,9 @@ typedef struct listIter {
 
 /* 双向链表 */
 typedef struct list {
+	/* 头指针, 指向 list 第一个结点 (有效) */
     listNode *head;
+	/* 尾结点, 指向 list 的最后一个结点 (有效) */
     listNode *tail;
     void *(*dup)(void *ptr);
 	/* 用户定义的释放 listNode value 域的函数 */
