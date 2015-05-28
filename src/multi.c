@@ -27,6 +27,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+/* 参考: http://redis.io/topics/transactions */
+
 #include "redis.h"
 
 /* ================================ MULTI/EXEC ============================== */
@@ -103,6 +105,7 @@ void discardCommand(redisClient *c) {
 
 /* Send a MULTI command to all the slaves and AOF file. Check the execCommand
  * implementation for more information. */
+/* TODO xzz */
 void execCommandPropagateMulti(redisClient *c) {
     robj *multistring = createStringObject("MULTI",5);
 
@@ -171,6 +174,7 @@ void execCommand(redisClient *c) {
      * was already propagated. */
     if (must_propagate) server.dirty++;
 
+/* TODO xzz */
 handle_monitor:
     /* Send EXEC to clients waiting data from MONITOR. We do it here
      * since the natural order of commands execution is actually:
@@ -230,6 +234,9 @@ void watchForKey(redisClient *c, robj *key) {
 
 /* Unwatch all the keys watched by this client. To clean the EXEC dirty
  * flag is up to the caller. */
+/* 一个 watched key 在两个地方都存了:
+ * 1. client->watched list 
+ * 2. watched_keys -> clients  */
 void unwatchAllKeys(redisClient *c) {
     listIter li;
     listNode *ln;
@@ -258,7 +265,8 @@ void unwatchAllKeys(redisClient *c) {
 
 /* "Touch" a key, so that if this key is being WATCHed by some client the
  * next EXEC will fail. */
-/* 在 db.c signalModifiedKey 钩子函数被调用 */
+/* 在 db.c signalModifiedKey 钩子函数被调用
+ * 设置 c->flags |= REDIS_DIRTY_CAS; */
 void touchWatchedKey(redisDb *db, robj *key) {
     list *clients;
     listIter li;
@@ -282,6 +290,7 @@ void touchWatchedKey(redisDb *db, robj *key) {
  * flush but will be deleted as effect of the flushing operation should
  * be touched. "dbid" is the DB that's getting the flush. -1 if it is
  * a FLUSHALL operation (all the DBs flushed). */
+/* flush db 相当于修改了 db 内的所有 key */
 void touchWatchedKeysOnFlush(int dbid) {
     listIter li1, li2;
     listNode *ln;

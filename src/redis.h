@@ -477,7 +477,7 @@ typedef struct redisDb {
 	/* key 为 client 等待的数据, value 为等待该 key 的 clients list */
     dict *blocking_keys;        /* Keys with clients waiting for data (BLPOP) */
     dict *ready_keys;           /* Blocked keys that received a PUSH */
-	/* 值为 clients list */
+	/* watched key -> clients, 值为 clients list */
     dict *watched_keys;         /* WATCHED keys for MULTI/EXEC CAS */
     struct evictionPoolEntry *eviction_pool;    /* Eviction pool of keys */
     int id;                     /* Database ID */
@@ -492,6 +492,7 @@ typedef struct multiCmd {
 } multiCmd;
 
 typedef struct multiState {
+	/* queue */
     multiCmd *commands;     /* Array of MULTI commands */
     int count;              /* Total number of MULTI commands */
     int minreplicas;        /* MINREPLICAS for synchronous replication */
@@ -547,6 +548,7 @@ typedef struct redisClient {
     int argc;
 	/* 命令行参数 */
     robj **argv;
+	/* 当前命令和上一个命令 */
     struct redisCommand *cmd, *lastcmd;
     int reqtype;
     int multibulklen;       /* number of multi bulk arguments left to read */
@@ -575,8 +577,12 @@ typedef struct redisClient {
     int btype;              /* Type of blocking op if REDIS_BLOCKED. */
     blockingState bpop;     /* blocking state */
     long long woff;         /* Last write global replication offset. */
+	/* 参考: http://redis.io/topics/transactions */
+	/* 其元素类型为 watchedKey */
     list *watched_keys;     /* Keys WATCHED for MULTI/EXEC CAS */
+	/* 作为 set 使用 */
     dict *pubsub_channels;  /* channels a client is interested in (SUBSCRIBE) */
+	/* 结点类型为 string (robj), 与 server.pubsub_patterns 类型不一样 */
     list *pubsub_patterns;  /* patterns a client is interested in (SUBSCRIBE) */
     sds peerid;             /* Cached peer ID. */
 
@@ -920,6 +926,7 @@ struct redisServer {
     long long mstime;       /* Like 'unixtime' but with milliseconds resolution. */
     /* Pubsub */
     dict *pubsub_channels;  /* Map channels to list of subscribed clients */
+	/* 注意 patterns 没有用 map, 结点类型为 pubsubPattern */
     list *pubsub_patterns;  /* A list of pubsub_patterns */
     int notify_keyspace_events; /* Events to propagate via Pub/Sub. This is an
                                    xor of REDIS_NOTIFY... flags. */
@@ -958,6 +965,7 @@ struct redisServer {
 };
 
 typedef struct pubsubPattern {
+	/* 订阅该 pattern 的 client */
     redisClient *client;
     robj *pattern;
 } pubsubPattern;

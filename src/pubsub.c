@@ -40,6 +40,7 @@ void freePubsubPattern(void *p) {
     zfree(pat);
 }
 
+/* a, b 都是 pubsubPattern 类型, 判断 a, b 是否匹配 */
 int listMatchPubsubPattern(void *a, void *b) {
     pubsubPattern *pa = a, *pb = b;
 
@@ -186,6 +187,7 @@ int pubsubUnsubscribeAllChannels(redisClient *c, int notify) {
         count += pubsubUnsubscribeChannel(c,channel,notify);
     }
     /* We were subscribed to nothing? Still reply to the client. */
+	/* 注意这里 count == 0 才会 reply */
     if (notify && count == 0) {
         addReply(c,shared.mbulkhdr[3]);
         addReply(c,shared.unsubscribebulk);
@@ -222,6 +224,7 @@ int pubsubUnsubscribeAllPatterns(redisClient *c, int notify) {
 }
 
 /* Publish a message */
+/* 订阅 channel 和 匹配 pattern 的 client 都会收到 reply */
 int pubsubPublishMessage(robj *channel, robj *message) {
     int receivers = 0;
     dictEntry *de;
