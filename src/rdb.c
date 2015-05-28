@@ -27,6 +27,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+/* 参考: http://redis.io/topics/persistence */
+
 #include "redis.h"
 #include "lzf.h"    /* LZF compression library */
 #include "zipmap.h"
