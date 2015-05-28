@@ -27,6 +27,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+/* 参考: http://redis.io/topics/persistence */
+
 #include "redis.h"
 #include "bio.h"
 #include "rio.h"
@@ -236,6 +238,7 @@ int startAppendOnly(void) {
     server.aof_last_fsync = server.unixtime;
     server.aof_fd = open(server.aof_filename,O_WRONLY|O_APPEND|O_CREAT,0644);
     redisAssert(server.aof_state == REDIS_AOF_OFF);
+	/* 文件打开失败 */
     if (server.aof_fd == -1) {
         redisLog(REDIS_WARNING,"Redis needs to enable the AOF but can't open the append only file: %s",strerror(errno));
         return REDIS_ERR;
@@ -1018,6 +1021,7 @@ ssize_t aofReadDiffFromParent(void) {
  * log Redis uses variadic commands when possible, such as RPUSH, SADD
  * and ZADD. However at max REDIS_AOF_REWRITE_ITEMS_PER_CMD items per time
  * are inserted using a single command. */
+/* 遍历所有数据库, 写入 set 等操作命令 */
 int rewriteAppendOnlyFile(char *filename) {
     dictIterator *di = NULL;
     dictEntry *de;
@@ -1270,6 +1274,7 @@ int rewriteAppendOnlyFileBackground(void) {
     pid_t childpid;
     long long start;
 
+	/* 检测是否已经有 rewrite 进程 */
     if (server.aof_child_pid != -1) return REDIS_ERR;
     if (aofCreatePipes() != REDIS_OK) return REDIS_ERR;
     start = ustime();

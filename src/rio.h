@@ -71,6 +71,7 @@ struct _rio {
         struct {
             FILE *fp;
             off_t buffered; /* Bytes written since last fsync. */
+			/* 默认为 0, 表示不进行 auto sync */
             off_t autosync; /* fsync after 'autosync' bytes written. */
         } file;
         /* Multiple FDs target (used to write to N sockets). */

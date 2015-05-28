@@ -58,6 +58,7 @@ static void anetSetError(char *err, const char *fmt, ...)
     va_end(ap);
 }
 
+/* 设置文件描述符的 O_NONBLOCK 标志 */
 int anetSetBlock(char *err, int fd, int non_block) {
     int flags;
 

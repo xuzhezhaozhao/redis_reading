@@ -791,7 +791,10 @@ struct redisServer {
     int aof_last_write_errno;       /* Valid if aof_last_write_status is ERR */
     int aof_load_truncated;         /* Don't stop on unexpected AOF EOF. */
     /* AOF pipes used to communicate between parent and child during rewrite. */
+	/* 在 aof.c aofCreatePipes 函数中被创建 */
+	/* non blocking */
     int aof_pipe_write_data_to_child;
+	/* non blocking */
     int aof_pipe_read_data_from_parent;
     int aof_pipe_write_ack_to_parent;
     int aof_pipe_read_ack_from_child;
@@ -799,6 +802,8 @@ struct redisServer {
     int aof_pipe_read_ack_from_parent;
     int aof_stop_sending_diff;     /* If true stop sending accumulated diffs
                                       to child process. */
+	/* 可以看做是 diff buffer, child 在 rewrite 的过程中分次读 parent pipe 中
+	 * 的 diff */
     sds aof_child_diff;             /* AOF diff accumulator child side. */
     /* RDB persistence */
     long long dirty;                /* Changes to DB from the last save */
