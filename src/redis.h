@@ -684,6 +684,7 @@ struct redisServer {
     int hz;                     /* serverCron() calls frequency in hertz */
 	/* dbnum 表示其数量 */
     redisDb *db;
+	/* load aof file 时有用 */
     dict *commands;             /* Command table */
     dict *orig_commands;        /* Command table before command renaming. */
     aeEventLoop *el;
@@ -719,6 +720,7 @@ struct redisServer {
     uint64_t next_client_id;    /* Next client unique ID. Incremental. */
     /* RDB / AOF loading information */
     int loading;                /* We are loading data from disk if true */
+	/* loaded file 大小 */
     off_t loading_total_bytes;
     off_t loading_loaded_bytes;
     time_t loading_start_time;
@@ -774,9 +776,11 @@ struct redisServer {
     off_t aof_rewrite_min_size;     /* the AOF file is at least N bytes. */
     off_t aof_rewrite_base_size;    /* AOF size on latest startup or rewrite. */
     off_t aof_current_size;         /* AOF current size. */
+	/* 开始 rewrite process 后置为 0 */
     int aof_rewrite_scheduled;      /* Rewrite once BGSAVE terminates. */
     pid_t aof_child_pid;            /* PID if rewriting process */
-	/* 结点为 aofrwblock 类型, aof.c */
+	/* 结点为 aofrwblock 类型, aof.c, aof rewrite process 结束后需要追加到
+	 * append only file 之后 */
     list *aof_rewrite_buf_blocks;   /* Hold changes during an AOF rewrite. */
     sds aof_buf;      /* AOF buffer, written before entering the event loop */
     int aof_fd;       /* File descriptor of currently selected AOF file */
@@ -962,6 +966,7 @@ typedef void redisCommandProc(redisClient *c);
 typedef int *redisGetKeysProc(struct redisCommand *cmd, robj **argv, int argc, int *numkeys);
 struct redisCommand {
     char *name;
+	/* 在指定的 redisclient 中执行命令, load aof file 时有用 */
     redisCommandProc *proc;
     int arity;
     char *sflags; /* Flags as string representation, one char per flag. */

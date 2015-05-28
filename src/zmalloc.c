@@ -364,6 +364,8 @@ size_t zmalloc_get_smap_bytes_by_field(char *field) {
 }
 #endif
 
+/* private_dirty 数据是被修改过的数据, 参考:
+ * http://stackoverflow.com/questions/17594183/what-does-private-dirty-memory-mean-in-smaps */
 size_t zmalloc_get_private_dirty(void) {
     return zmalloc_get_smap_bytes_by_field("Private_Dirty:");
 }

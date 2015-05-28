@@ -123,6 +123,7 @@ void aofChildWriteDiffData(aeEventLoop *el, int fd, void *privdata, int mask) {
 }
 
 /* Append data to the AOF rewrite buffer, allocating new blocks if needed. */
+/* rewrite process 结束后需要将 rewrite buffer 追加在 append only file 之后 */
 void aofRewriteBufferAppend(unsigned char *s, unsigned long len) {
     listNode *ln = listLast(server.aof_rewrite_buf_blocks);
     aofrwblock *block = ln ? ln->value : NULL;
@@ -333,6 +334,7 @@ void flushAppendOnlyFile(int force) {
     server.aof_flush_postponed_start = 0;
 
     if (nwritten != (signed)sdslen(server.aof_buf)) {
+		/* write 不完全, 需要用 ftruncate 删除不完整的写入数据 */
         static time_t last_write_error_log = 0;
         int can_log = 0;
 
@@ -437,6 +439,7 @@ void flushAppendOnlyFile(int force) {
     }
 }
 
+/* argc, argv 表示的命令, 将命令的字符串形式连接到 dst 之后 */
 sds catAppendOnlyGenericCommand(sds dst, int argc, robj **argv) {
     char buf[32];
     int len, j;
@@ -1023,7 +1026,6 @@ ssize_t aofReadDiffFromParent(void) {
  * log Redis uses variadic commands when possible, such as RPUSH, SADD
  * and ZADD. However at max REDIS_AOF_REWRITE_ITEMS_PER_CMD items per time
  * are inserted using a single command. */
-/* 遍历所有数据库, 写入 set 等操作命令 */
 int rewriteAppendOnlyFile(char *filename) {
     dictIterator *di = NULL;
     dictEntry *de;
@@ -1272,6 +1274,7 @@ void aofClosePipes(void) {
  *    finally will rename(2) the temp file in the actual file name.
  *    The the new file is reopened as the new append only file. Profit!
  */
+/* 实际工作调用 rewriteAppendOnlyFile 完成, fork 一个子进程, 父进程直接返回 */
 int rewriteAppendOnlyFileBackground(void) {
     pid_t childpid;
     long long start;
@@ -1315,6 +1318,9 @@ int rewriteAppendOnlyFileBackground(void) {
         server.aof_rewrite_scheduled = 0;
         server.aof_rewrite_time_start = time(NULL);
         server.aof_child_pid = childpid;
+		/* 禁止 dict resize, 因为子进程 采用 copy-on-write 的方式共享父进程的
+		 * virtual address space, 父进程一旦进行 dict resize, 会造成子进程大量
+		 * 的 copy-on-write */
         updateDictResizePolicy();
         /* We set appendseldb to -1 in order to force the next call to the
          * feedAppendOnlyFile() to issue a SELECT command, so the differences
