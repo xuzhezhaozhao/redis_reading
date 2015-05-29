@@ -132,6 +132,7 @@ void aeStop(aeEventLoop *eventLoop) {
     eventLoop->stop = 1;
 }
 
+/* 往 eventLoop 中添加事件 */
 int aeCreateFileEvent(aeEventLoop *eventLoop, int fd, int mask,
         aeFileProc *proc, void *clientData)
 {
@@ -152,6 +153,7 @@ int aeCreateFileEvent(aeEventLoop *eventLoop, int fd, int mask,
     return AE_OK;
 }
 
+/* 删除注册事件 */
 void aeDeleteFileEvent(aeEventLoop *eventLoop, int fd, int mask)
 {
     if (fd >= eventLoop->setsize) return;
@@ -170,6 +172,7 @@ void aeDeleteFileEvent(aeEventLoop *eventLoop, int fd, int mask)
     }
 }
 
+/* 获取 fd 注册的事件 mask */
 int aeGetFileEvents(aeEventLoop *eventLoop, int fd) {
     if (fd >= eventLoop->setsize) return 0;
     aeFileEvent *fe = &eventLoop->events[fd];
@@ -177,6 +180,7 @@ int aeGetFileEvents(aeEventLoop *eventLoop, int fd) {
     return fe->mask;
 }
 
+/* 获取当前时间 */
 static void aeGetTime(long *seconds, long *milliseconds)
 {
     struct timeval tv;
@@ -186,6 +190,7 @@ static void aeGetTime(long *seconds, long *milliseconds)
     *milliseconds = tv.tv_usec/1000;
 }
 
+/* 结果保存在 *sec, *ms 中 */
 static void aeAddMillisecondsToNow(long long milliseconds, long *sec, long *ms) {
     long cur_sec, cur_ms, when_sec, when_ms;
 
@@ -200,6 +205,7 @@ static void aeAddMillisecondsToNow(long long milliseconds, long *sec, long *ms) 
     *ms = when_ms;
 }
 
+/* 返回创建的 time event id */
 long long aeCreateTimeEvent(aeEventLoop *eventLoop, long long milliseconds,
         aeTimeProc *proc, void *clientData,
         aeEventFinalizerProc *finalizerProc)
@@ -219,6 +225,7 @@ long long aeCreateTimeEvent(aeEventLoop *eventLoop, long long milliseconds,
     return id;
 }
 
+/* 成功返回 AE_OK, 事件 id 不存在返回 AE_ERR */
 int aeDeleteTimeEvent(aeEventLoop *eventLoop, long long id)
 {
     aeTimeEvent *te, *prev = NULL;
@@ -252,6 +259,7 @@ int aeDeleteTimeEvent(aeEventLoop *eventLoop, long long id)
  *    Much better but still insertion or deletion of timers is O(N).
  * 2) Use a skiplist to have this operation as O(1) and insertion as O(log(N)).
  */
+/* 返回最近(时间)要触发的事件 */
 static aeTimeEvent *aeSearchNearestTimer(aeEventLoop *eventLoop)
 {
     aeTimeEvent *te = eventLoop->timeEventHead;
@@ -268,6 +276,7 @@ static aeTimeEvent *aeSearchNearestTimer(aeEventLoop *eventLoop)
 }
 
 /* Process time events */
+/* 返回处理事件数 */
 static int processTimeEvents(aeEventLoop *eventLoop) {
     int processed = 0;
     aeTimeEvent *te;
@@ -282,7 +291,9 @@ static int processTimeEvents(aeEventLoop *eventLoop) {
      * events to be processed ASAP when this happens: the idea is that
      * processing events earlier is less dangerous than delaying them
      * indefinitely, and practice suggests it is. */
+	/* TODO xzz 啥时候出现这种情况? */
     if (now < eventLoop->lastTime) {
+		/* 事件将全部被处理 */
         te = eventLoop->timeEventHead;
         while(te) {
             te->when_sec = 0;
@@ -324,10 +335,12 @@ static int processTimeEvents(aeEventLoop *eventLoop) {
              * deletion (putting references to the nodes to delete into
              * another linked list). */
             if (retval != AE_NOMORE) {
+				/* 没有完成, 加一个时间, 留在链表中, 之后还要处理 */
                 aeAddMillisecondsToNow(retval,&te->when_sec,&te->when_ms);
             } else {
                 aeDeleteTimeEvent(eventLoop, id);
             }
+			/* 又从头开始扫描链表 */
             te = eventLoop->timeEventHead;
         } else {
             te = te->next;
@@ -427,6 +440,7 @@ int aeProcessEvents(aeEventLoop *eventLoop, int flags)
 
 /* Wait for milliseconds until the given file descriptor becomes
  * writable/readable/exception */
+/* 利用 poll 实现, 成功返回就绪事件 mask, 超时返回 0, 出错返回 -1 */
 int aeWait(int fd, int mask, long long milliseconds) {
     struct pollfd pfd;
     int retmask = 0, retval;
@@ -447,6 +461,7 @@ int aeWait(int fd, int mask, long long milliseconds) {
     }
 }
 
+/* 事件循环 */
 void aeMain(aeEventLoop *eventLoop) {
     eventLoop->stop = 0;
     while (!eventLoop->stop) {
