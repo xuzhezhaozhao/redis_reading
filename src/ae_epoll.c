@@ -31,8 +31,23 @@
 
 #include <sys/epoll.h>
 
+#include <stdio.h>
+#include <sys/time.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <poll.h>
+#include <string.h>
+#include <time.h>
+#include <errno.h>
+#include "ae.h"
+#include "zmalloc.h"
+#include "config.h"
+
 typedef struct aeApiState {
+	/* epoll instance file descriptor */
     int epfd;
+	/* epoll_wait 返回的事件 */
     struct epoll_event *events;
 } aeApiState;
 
@@ -70,6 +85,7 @@ static void aeApiFree(aeEventLoop *eventLoop) {
     zfree(state);
 }
 
+/* 注册事件 */
 static int aeApiAddEvent(aeEventLoop *eventLoop, int fd, int mask) {
     aeApiState *state = eventLoop->apidata;
     struct epoll_event ee;
@@ -88,6 +104,7 @@ static int aeApiAddEvent(aeEventLoop *eventLoop, int fd, int mask) {
     return 0;
 }
 
+/* 删除事件 */
 static void aeApiDelEvent(aeEventLoop *eventLoop, int fd, int delmask) {
     aeApiState *state = eventLoop->apidata;
     struct epoll_event ee;
@@ -107,6 +124,8 @@ static void aeApiDelEvent(aeEventLoop *eventLoop, int fd, int delmask) {
     }
 }
 
+/* 调用 epoll_wait 等待注册事件发生, tvp 为 NULL 表示 wait indefinitely
+ * 返回就绪事件的个数 */
 static int aeApiPoll(aeEventLoop *eventLoop, struct timeval *tvp) {
     aeApiState *state = eventLoop->apidata;
     int retval, numevents = 0;
@@ -123,6 +142,7 @@ static int aeApiPoll(aeEventLoop *eventLoop, struct timeval *tvp) {
 
             if (e->events & EPOLLIN) mask |= AE_READABLE;
             if (e->events & EPOLLOUT) mask |= AE_WRITABLE;
+			/* TODO xzz 这两个事件是什么情况? */
             if (e->events & EPOLLERR) mask |= AE_WRITABLE;
             if (e->events & EPOLLHUP) mask |= AE_WRITABLE;
             eventLoop->fired[j].fd = e->data.fd;
