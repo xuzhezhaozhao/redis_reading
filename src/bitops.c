@@ -58,6 +58,7 @@ static int getBitOffsetFromArgument(redisClient *c, robj *o, size_t *offset) {
 /* Count number of bits set in the binary array pointed by 's' and long
  * 'count' bytes. The implementation of this function is required to
  * work with a input string length up to 512 MB. */
+/* 统计 s 指向的 count bytes 的内存中 bit 1 的数量 */
 size_t redisPopcount(void *s, long count) {
     size_t bits = 0;
     unsigned char *p = s;
@@ -224,6 +225,7 @@ void setbitCommand(redisClient *c) {
         return;
 
     /* Bits can only be set or cleared... */
+	/* on 只能为 0 或 1 */
     if (on & ~1) {
         addReplyError(c,err);
         return;
