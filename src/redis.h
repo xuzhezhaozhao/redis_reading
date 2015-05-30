@@ -539,7 +539,8 @@ typedef struct readyList {
 /* 在 networking.c 中 creatClient 创建 */
 typedef struct redisClient {
     uint64_t id;            /* Client incremental unique ID. */
-	/* 创建 client 时传入的参数 */
+	/* client file descriptor, 创建 client 时传入的参数, <= 0 时为 
+	 * fake client for AOF loading */
     int fd;
     redisDb *db;
     int dictid;
@@ -558,8 +559,11 @@ typedef struct redisClient {
 	/* 链表设置了: 
 	 * listSetFreeMethod(c->reply,decrRefCountVoid); 
 	 * listSetDupMethod(c->reply,dupClientReplyValue);
+	 * 
+	 * 值为 sds 类型
 	 */
     list *reply;
+	/* reply list objects 占用内存的总数 */
     unsigned long reply_bytes; /* Tot bytes of objects in reply list */
     int sentlen;            /* Amount of bytes already sent in the current
                                buffer or object being sent. */
@@ -602,6 +606,7 @@ typedef struct redisClient {
     sds peerid;             /* Cached peer ID. */
 
     /* Response buffer */
+	/* 当前 buffer 可写位置, sentlen 为已处理的 buffer 数据长度 */
     int bufpos;
     char buf[REDIS_REPLY_CHUNK_BYTES];
 } redisClient;

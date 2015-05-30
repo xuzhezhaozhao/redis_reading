@@ -187,6 +187,7 @@ int prepareClientToWrite(redisClient *c) {
 
 /* Create a duplicate of the last object in the reply list when
  * it is not exclusively owned by the reply list. */
+/* last node 值会被 dup object 代替，返回 dup object */
 robj *dupLastObjectIfNeeded(list *reply) {
     robj *new, *cur;
     listNode *ln;
@@ -205,6 +206,8 @@ robj *dupLastObjectIfNeeded(list *reply) {
  * Low level functions to add more data to output buffers.
  * -------------------------------------------------------------------------- */
 
+/* 添加到静态 buffer，成功返回 OK，若 reply list 不为空或静态 buffer 大小不够，
+ * 返回 ERR */
 int _addReplyToBuffer(redisClient *c, char *s, size_t len) {
     size_t available = sizeof(c->buf)-c->bufpos;
 
@@ -222,6 +225,7 @@ int _addReplyToBuffer(redisClient *c, char *s, size_t len) {
     return REDIS_OK;
 }
 
+/* 添加到 reply list, 有可能会与 list 最后一个结点合并 */
 void _addReplyObjectToList(redisClient *c, robj *o) {
     robj *tail;
 
@@ -424,6 +428,7 @@ void addReplyStatusFormat(redisClient *c, const char *fmt, ...) {
 
 /* Adds an empty object to the reply list that will contain the multi bulk
  * length, which is not known when this function is called. */
+/* 返回值为 listNode* 类型 */
 void *addDeferredMultiBulkLength(redisClient *c) {
     /* Note that we install the write event here even if the object is not
      * ready to be sent, since we are sure that before returning to the
@@ -516,6 +521,7 @@ void addReplyMultiBulkLen(redisClient *c, long length) {
 }
 
 /* Create the length prefix of a bulk reply, example: $2234 */
+/* 对象为 string 类型，对象长度 */
 void addReplyBulkLen(redisClient *c, robj *obj) {
     size_t len;
 
@@ -817,6 +823,7 @@ void freeClientsInAsyncFreeQueue(void) {
     }
 }
 
+/* cliend->fd AE_WRITABLE 回调函数 */
 void sendReplyToClient(aeEventLoop *el, int fd, void *privdata, int mask) {
     redisClient *c = privdata;
     int nwritten = 0, totwritten = 0, objlen;
@@ -839,6 +846,7 @@ void sendReplyToClient(aeEventLoop *el, int fd, void *privdata, int mask) {
                 c->sentlen = 0;
             }
         } else {
+			/* bufpos <= 0 */
             o = listNodeValue(listFirst(c->reply));
             objlen = sdslen(o->ptr);
             objmem = getStringObjectSdsUsedMemory(o);

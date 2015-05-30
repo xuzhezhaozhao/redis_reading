@@ -93,6 +93,8 @@ flags = [
 #'/usr/include/c++/',
 #'-isystem',
 #'/usr/include/x86_64-linux-gnu/c++/4.8/',
+'-isystem',
+'deps/lua/src/',
 ]
 
 

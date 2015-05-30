@@ -132,7 +132,7 @@ void aeStop(aeEventLoop *eventLoop) {
     eventLoop->stop = 1;
 }
 
-/* 往 eventLoop 中添加事件 */
+/* 往 eventLoop 中添加事件, proc 为回调函数, clientData 为 redisClient */
 int aeCreateFileEvent(aeEventLoop *eventLoop, int fd, int mask,
         aeFileProc *proc, void *clientData)
 {
