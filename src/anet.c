@@ -554,22 +554,32 @@ int anetUnixAccept(char *err, int s) {
     return fd;
 }
 
+/* 获取 client 的 ip 地址和 端口(port), 结果保存在 *ip 和 *port 中;
+ * 参数 fd 为 client->fd, 成功返回 0, 出错返回 -1, 并返回 '?:0' */
 int anetPeerToString(int fd, char *ip, size_t ip_len, int *port) {
     struct sockaddr_storage sa;
     socklen_t salen = sizeof(sa);
 
+	/* 根据 socket 获得地址信息 */
     if (getpeername(fd,(struct sockaddr*)&sa,&salen) == -1) goto error;
     if (ip_len == 0) goto error;
 
+	/* 关于 AF_INET man socket */
     if (sa.ss_family == AF_INET) {
+		/* ipv4 */
         struct sockaddr_in *s = (struct sockaddr_in *)&sa;
+		/* 将二进制 ip 地址(32 bits)转为 text 格式(xxx.xxx.xxx.xxx) */
         if (ip) inet_ntop(AF_INET,(void*)&(s->sin_addr),ip,ip_len);
+		/* 转换端口的 byte order */
         if (port) *port = ntohs(s->sin_port);
     } else if (sa.ss_family == AF_INET6) {
+		/* ipv6 */
         struct sockaddr_in6 *s = (struct sockaddr_in6 *)&sa;
+		/* ipv6 的 text 格式为 xx:xx:xx:xx:xx:xx */
         if (ip) inet_ntop(AF_INET6,(void*)&(s->sin6_addr),ip,ip_len);
         if (port) *port = ntohs(s->sin6_port);
     } else if (sa.ss_family == AF_UNIX) {
+		/* local communication */
         if (ip) strncpy(ip,"/unixsocket",ip_len);
         if (port) *port = 0;
     } else {

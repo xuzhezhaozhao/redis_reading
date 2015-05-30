@@ -247,12 +247,15 @@ typedef long long mstime_t; /* millisecond time type. */
 #define REDIS_MULTI (1<<3)   /* This client is in a MULTI context */
 #define REDIS_BLOCKED (1<<4) /* The client is waiting in a blocking operation */
 #define REDIS_DIRTY_CAS (1<<5) /* Watched keys modified. EXEC will fail. */
+/* 当用 CLIENT KILL 命令关闭自己时 client 会被置为这个状态 */
 #define REDIS_CLOSE_AFTER_REPLY (1<<6) /* Close after writing entire reply. */
 #define REDIS_UNBLOCKED (1<<7) /* This client was unblocked and is stored in
                                   server.unblocked_clients */
 #define REDIS_LUA_CLIENT (1<<8) /* This is a non connected client used by Lua */
 #define REDIS_ASKING (1<<9)     /* Client issued the ASKING command */
+/* 当 client 超过 soft/hard limit 时 freeClientAsync 会将 client flag 置为它 */
 #define REDIS_CLOSE_ASAP (1<<10)/* Close this client ASAP */
+/* 还可以通过 ipv4, ipv6 socket */
 #define REDIS_UNIX_SOCKET (1<<11) /* Client connected via Unix domain socket */
 #define REDIS_DIRTY_EXEC (1<<12)  /* EXEC will fail for errors while queueing */
 #define REDIS_MASTER_FORCE_REPLY (1<<13)  /* Queue replies even if is master */
@@ -568,6 +571,7 @@ typedef struct redisClient {
     int sentlen;            /* Amount of bytes already sent in the current
                                buffer or object being sent. */
     time_t ctime;           /* Client creation time */
+	/* 上一次 reply 的时间 */
     time_t lastinteraction; /* time of the last interaction, used for timeout */
     time_t obuf_soft_limit_reached_time;
     int flags;              /* REDIS_SLAVE | REDIS_MONITOR | REDIS_MULTI ... */
@@ -602,7 +606,9 @@ typedef struct redisClient {
 	 * listSetMatchMethod(c->pubsub_patterns,listMatchObjects);
 	 */
     list *pubsub_patterns;  /* patterns a client is interested in (SUBSCRIBE) */
-	/* 初始为 NULL */
+	/* 初始为 NULL, CLIENT LIST 命令中的 addr=127.0.0.1:44068 就是它了.
+ 	 * The Peer ID never changes during the life of the client, however it
+	 * is expensive to compute. */
     sds peerid;             /* Cached peer ID. */
 
     /* Response buffer */
@@ -737,6 +743,7 @@ struct redisServer {
     int cfd_count;              /* Used slots in cfd[] */
 	/* non connected client 不在 list 中 */
     list *clients;              /* List of active clients */
+	/* 此时 client 的 REDIS_CLOSE_ASAP 标志是打开的 */
     list *clients_to_close;     /* Clients to close asynchronously */
     list *slaves, *monitors;    /* List of slaves and MONITORs */
     redisClient *current_client; /* Current client, only used on crash report */

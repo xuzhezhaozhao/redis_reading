@@ -289,6 +289,7 @@ void _addReplySdsToList(redisClient *c, sds s) {
     asyncCloseClientOnOutputBufferLimitReached(c);
 }
 
+/* 添加到 reply list */
 void _addReplyStringToList(redisClient *c, char *s, size_t len) {
     robj *tail;
 
@@ -823,7 +824,7 @@ void freeClientsInAsyncFreeQueue(void) {
     }
 }
 
-/* cliend->fd AE_WRITABLE 回调函数 */
+/* cliend->fd AE_WRITABLE 回调函数, 调用 write 向 fd 中写入 reply */
 void sendReplyToClient(aeEventLoop *el, int fd, void *privdata, int mask) {
     redisClient *c = privdata;
     int nwritten = 0, totwritten = 0, objlen;
@@ -1262,6 +1263,7 @@ void getClientsMaxBuffers(unsigned long *longest_output_list,
  * in the form ip:port if ip does not contain ":" itself, otherwise
  * [ip]:port format is used (for IPv6 addresses basically). */
 void formatPeerId(char *peerid, size_t peerid_len, char *ip, int port) {
+	/* ipv6 格式为 xx:xx:xx:xx:xx:xx, ipv4 为 xxx.xxx.xxx.xxx */
     if (strchr(ip,':'))
         snprintf(peerid,peerid_len,"[%s]:%d",ip,port);
     else
@@ -1281,7 +1283,9 @@ void formatPeerId(char *peerid, size_t peerid_len, char *ip, int port) {
  * On failure the function still populates 'peerid' with the "?:0" string
  * in case you want to relax error checking or need to display something
  * anyway (see anetPeerToString implementation for more info). */
+/* 在 CLIENT LIST 命令结果的 addr 域显示结果, peerid 保存结果 */
 int genClientPeerId(redisClient *client, char *peerid, size_t peerid_len) {
+	/* client ip 地址 */
     char ip[REDIS_IP_STR_LEN];
     int port;
 
@@ -1313,6 +1317,7 @@ char *getClientPeerId(redisClient *c) {
 
 /* Concatenate a string representing the state of a client in an human
  * readable format, into the sds string 's'. */
+/* 追加 client 信息到 s 后面 */
 sds catClientInfoString(sds s, redisClient *client) {
     char flags[16], events[3], *p;
     int emask;
@@ -1363,12 +1368,14 @@ sds catClientInfoString(sds s, redisClient *client) {
         client->lastcmd ? client->lastcmd->name : "NULL");
 }
 
+/* 用在 client list 命令中, 返回所有 client 的信息, 以换行符分隔 */
 sds getAllClientsInfoString(void) {
     listNode *ln;
     listIter li;
     redisClient *client;
     sds o = sdsempty();
 
+	/* 每个 client 信息不超过 200 字符 */
     o = sdsMakeRoomFor(o,200*listLength(server.clients));
     listRewind(server.clients,&li);
     while ((ln = listNext(&li)) != NULL) {
@@ -1457,6 +1464,7 @@ void clientCommand(redisClient *c) {
 
             /* Kill it. */
             if (c == client) {
+				/* kill self */
                 close_this_client = 1;
             } else {
                 freeClient(client);
@@ -1525,6 +1533,7 @@ void clientCommand(redisClient *c) {
 /* Rewrite the command vector of the client. All the new objects ref count
  * is incremented. The old command vector is freed, and the old objects
  * ref count is decremented. */
+/* 用函数参数指定的命令参数代替原来 client 中的命令参数 */
 void rewriteClientCommandVector(redisClient *c, int argc, ...) {
     va_list ap;
     int j;
@@ -1627,6 +1636,8 @@ char *getClientTypeName(int class) {
  *
  * Return value: non-zero if the client reached the soft or the hard limit.
  *               Otherwise zero is returned. */
+/* 到达 soft limit 后不会马上返回 1, 而是查看其到达 soft limit 的时间有
+ * 没有超过一个限制, 超过了才会置 soft 为 1, 到达 hard limit 则立马返回 1*/
 int checkClientOutputBufferLimits(redisClient *c) {
     int soft = 0, hard = 0, class;
     unsigned long used_mem = getClientOutputBufferMemoryUsage(c);
@@ -1718,6 +1729,7 @@ void flushSlavesOutputBuffers(void) {
  * time left for the previous duration. However if the duration is smaller
  * than the time left for the previous pause, no change is made to the
  * left duration. */
+/* CLIENT PAUSE 命令调用它, end 为 pause 结束时间 */
 void pauseClients(mstime_t end) {
     if (!server.clients_paused || end > server.clients_pause_end_time)
         server.clients_pause_end_time = end;
@@ -1726,10 +1738,13 @@ void pauseClients(mstime_t end) {
 
 /* Return non-zero if clients are currently paused. As a side effect the
  * function checks if the pause time was reached and clear it. */
+/* 并将 unpaused client 添加到 server->unblocked_clients list 中 */
 int clientsArePaused(void) {
     if (server.clients_paused &&
         server.clients_pause_end_time < server.mstime)
     {
+		/* pause 时间打了 */
+
         listNode *ln;
         listIter li;
         redisClient *c;
