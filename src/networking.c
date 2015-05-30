@@ -52,15 +52,18 @@ size_t getStringObjectSdsUsedMemory(robj *o) {
     }
 }
 
+/* o 为 robj* 类型, 将其引用加 1 并返回, 可以作为 list 的 dupvalue 方法 */
 void *dupClientReplyValue(void *o) {
     incrRefCount((robj*)o);
     return o;
 }
 
+/* a, b 为字符串, 比较其是否相等 */
 int listMatchObjects(void *a, void *b) {
     return equalStringObjects(a,b);
 }
 
+/* fd 为 -1 时看下面的注释 */
 redisClient *createClient(int fd) {
     redisClient *c = zmalloc(sizeof(redisClient));
 
@@ -68,6 +71,7 @@ redisClient *createClient(int fd) {
      * This is useful since all the Redis commands needs to be executed
      * in the context of a client. When commands are executed in other
      * contexts (for instance a Lua script) we need a non connected client. */
+	/* TODO xzz */
     if (fd != -1) {
         anetNonBlock(NULL,fd);
         anetEnableTcpNoDelay(NULL,fd);

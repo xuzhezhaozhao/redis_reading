@@ -507,7 +507,7 @@ typedef struct blockingState {
                              * is > timeout then the operation timed out. */
 
     /* REDIS_BLOCK_LIST */
-	/* 客户端等待的 keys */
+	/* 客户端等待的 keys, 为 setDictType 类型 */
     dict *keys;             /* The keys we are waiting to terminate a blocking
                              * operation such as BLPOP. Otherwise NULL. */
     robj *target;           /* The key that should receive the element,
@@ -536,8 +536,10 @@ typedef struct readyList {
 
 /* With multiplexing we need to take per-client state.
  * Clients are taken in a linked list. */
+/* 在 networking.c 中 creatClient 创建 */
 typedef struct redisClient {
     uint64_t id;            /* Client incremental unique ID. */
+	/* 创建 client 时传入的参数 */
     int fd;
     redisDb *db;
     int dictid;
@@ -553,6 +555,10 @@ typedef struct redisClient {
     int reqtype;
     int multibulklen;       /* number of multi bulk arguments left to read */
     long bulklen;           /* length of bulk argument in multi bulk request */
+	/* 链表设置了: 
+	 * listSetFreeMethod(c->reply,decrRefCountVoid); 
+	 * listSetDupMethod(c->reply,dupClientReplyValue);
+	 */
     list *reply;
     unsigned long reply_bytes; /* Tot bytes of objects in reply list */
     int sentlen;            /* Amount of bytes already sent in the current
@@ -561,8 +567,11 @@ typedef struct redisClient {
     time_t lastinteraction; /* time of the last interaction, used for timeout */
     time_t obuf_soft_limit_reached_time;
     int flags;              /* REDIS_SLAVE | REDIS_MONITOR | REDIS_MULTI ... */
+	/* 初始为 0 */
     int authenticated;      /* when requirepass is non-NULL */
+	/* 初始为 REDIS_REPL_NONE */
     int replstate;          /* replication state if this is a slave */
+	/* 初始为 0 */
     int repl_put_online_on_ack; /* Install slave write handler on ACK. */
     int repldbfd;           /* replication DB file descriptor */
     off_t repldboff;        /* replication DB file offset */
@@ -574,16 +583,22 @@ typedef struct redisClient {
     char replrunid[REDIS_RUN_ID_SIZE+1]; /* master run id if this is a master */
     int slave_listening_port; /* As configured with: SLAVECONF listening-port */
     multiState mstate;      /* MULTI/EXEC state */
+	/* 初始为 REDIS_BLOCKED_NONE */
     int btype;              /* Type of blocking op if REDIS_BLOCKED. */
     blockingState bpop;     /* blocking state */
     long long woff;         /* Last write global replication offset. */
 	/* 参考: http://redis.io/topics/transactions */
 	/* 其元素类型为 watchedKey */
     list *watched_keys;     /* Keys WATCHED for MULTI/EXEC CAS */
-	/* 作为 set 使用 */
+	/* 作为 set 使用, setDictType 类型 */
     dict *pubsub_channels;  /* channels a client is interested in (SUBSCRIBE) */
-	/* 结点类型为 string (robj), 与 server.pubsub_patterns 类型不一样 */
+	/* 结点类型为 string (robj), 与 server.pubsub_patterns 类型不一样, 
+	 * 设置了 
+	 * listSetFreeMethod(c->pubsub_patterns,decrRefCountVoid);
+	 * listSetMatchMethod(c->pubsub_patterns,listMatchObjects);
+	 */
     list *pubsub_patterns;  /* patterns a client is interested in (SUBSCRIBE) */
+	/* 初始为 NULL */
     sds peerid;             /* Cached peer ID. */
 
     /* Response buffer */
@@ -715,6 +730,7 @@ struct redisServer {
     int sofd;                   /* Unix socket file descriptor */
     int cfd[REDIS_BINDADDR_MAX];/* Cluster bus listening socket */
     int cfd_count;              /* Used slots in cfd[] */
+	/* non connected client 不在 list 中 */
     list *clients;              /* List of active clients */
     list *clients_to_close;     /* Clients to close asynchronously */
     list *slaves, *monitors;    /* List of slaves and MONITORs */
