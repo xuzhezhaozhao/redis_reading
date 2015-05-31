@@ -713,6 +713,7 @@ struct redisServer {
     /* General */
     pid_t pid;                  /* Main process pid. */
     char *configfile;           /* Absolute config file path, or NULL */
+	/* 频率, 赫兹 */
     int hz;                     /* serverCron() calls frequency in hertz */
 	/* dbnum 表示其数量 */
     redisDb *db;
@@ -793,6 +794,7 @@ struct redisServer {
         int idx;
     } inst_metric[REDIS_METRIC_COUNT];
     /* Configuration */
+	/* 当 log level 小于这个值时将不会被 log */
     int verbosity;                  /* Loglevel in redis.conf */
     int maxidletime;                /* Client timeout in seconds */
     int tcpkeepalive;               /* Set SO_KEEPALIVE if non-zero. */
@@ -867,7 +869,9 @@ struct redisServer {
     /* Propagation of commands in AOF / replication */
     redisOpArray also_propagate;    /* Additional command to propagate. */
     /* Logging */
+	/* 若为 "" 则会 log 到 stdout */
     char *logfile;                  /* Path of log file */
+	/* syslog 为 linux api */
     int syslog_enabled;             /* Is syslog enabled? */
     char *syslog_ident;             /* Syslog ident */
     int syslog_facility;            /* Syslog facility */
@@ -1000,10 +1004,12 @@ typedef struct pubsubPattern {
 
 typedef void redisCommandProc(redisClient *c);
 typedef int *redisGetKeysProc(struct redisCommand *cmd, robj **argv, int argc, int *numkeys);
+/* 详细的描述见 redis.c */
 struct redisCommand {
     char *name;
 	/* 在指定的 redisclient 中执行命令, load aof file 时有用 */
     redisCommandProc *proc;
+ 	/* arity: number of arguments, it is possible to use -N to say >= N */
     int arity;
     char *sflags; /* Flags as string representation, one char per flag. */
     int flags;    /* The actual flags, obtained from the 'sflags' field. */
@@ -1014,6 +1020,8 @@ struct redisCommand {
     int firstkey; /* The first argument that's a key (0 = no keys) */
     int lastkey;  /* The last argument that's a key */
     int keystep;  /* The step between first and last key */
+ 	/* microseconds: microseconds of total execution time for this command.
+ 	* calls: total number of calls of this command. */
     long long microseconds, calls;
 };
 
