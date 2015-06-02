@@ -61,6 +61,7 @@ struct sharedObjectsStruct shared;
  * values are used for double on-disk serialization, and are initialized
  * at runtime to avoid strange compiler optimizations. */
 
+/* 0.0, 1.0/R_Zero, -1.0/R_Zero, R_Zero/R_Zero */
 double R_Zero, R_PosInf, R_NegInf, R_Nan;
 
 /*================================= Globals ================================= */
@@ -120,6 +121,7 @@ struct redisServer server; /* server global state */
  *    Note that commands that may trigger a DEL as a side effect (like SET)
  *    are not fast commands.
  */
+/* populateCommandTable 函数完成转换 */
 struct redisCommand redisCommandTable[] = {
     {"get",getCommand,2,"rF",0,NULL,1,1,1,0,0},
     {"set",setCommand,-3,"wm",0,NULL,1,1,1,0,0},
@@ -1405,6 +1407,7 @@ void createSharedObjects(void) {
     shared.maxstring = createStringObject("maxstring",9);
 }
 
+/* 初始化 server */
 void initServerConfig(void) {
     int j;
 
@@ -3412,6 +3415,7 @@ void daemonize(void) {
     }
 }
 
+/* -v, --version */
 void version(void) {
     printf("Redis server v=%s sha=%s:%d malloc=%s bits=%d build=%llx\n",
         REDIS_VERSION,
@@ -3423,6 +3427,7 @@ void version(void) {
     exit(0);
 }
 
+/* -h, --help */
 void usage(void) {
     fprintf(stderr,"Usage: ./redis-server [/path/to/redis.conf] [options]\n");
     fprintf(stderr,"       ./redis-server - (read config from stdin)\n");
@@ -3556,6 +3561,7 @@ void loadDataFromDisk(void) {
     }
 }
 
+/* 内存分配错误处理函数 */
 void redisOutOfMemoryHandler(size_t allocation_size) {
     redisLog(REDIS_WARNING,"Out Of Memory allocating %zu bytes!",
         allocation_size);
@@ -3652,6 +3658,7 @@ int main(int argc, char **argv) {
         }
         if (configfile) server.configfile = getAbsolutePath(configfile);
         resetServerSaveParams();
+		/* TODO xzz */
         loadServerConfig(configfile,options);
         sdsfree(options);
     } else {

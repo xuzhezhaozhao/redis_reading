@@ -81,6 +81,7 @@ unsigned int dictIntHashFunction(unsigned int key)
 
 static uint32_t dict_hash_function_seed = 5381;
 
+/* redis.c main 中会设置 seed */
 void dictSetHashFunctionSeed(uint32_t seed) {
     dict_hash_function_seed = seed;
 }

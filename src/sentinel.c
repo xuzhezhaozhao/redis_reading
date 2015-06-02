@@ -194,17 +194,26 @@ typedef struct sentinelRedisInstance {
 
 /* Main state. */
 struct sentinelState {
+	/* 初始为 0 */
     uint64_t current_epoch;     /* Current epoch. */
+	/* 初始为 dictCreate(&instancesDictType,NULL) */
     dict *masters;      /* Dictionary of master sentinelRedisInstances.
                            Key is the instance name, value is the
                            sentinelRedisInstance structure pointer. */
+	/* 初始为 0 */
     int tilt;           /* Are we in TILT mode? */
+	/* 初始为 0 */
     int running_scripts;    /* Number of scripts in execution right now. */
+	/* 初始为 0 */
     mstime_t tilt_start_time;   /* When TITL started. */
+	/* 初始为 server 启动时间 */
     mstime_t previous_time;     /* Last time we ran the time handler. */
+	/* 初始为 listCreate() */
     list *scripts_queue;    /* Queue of user scripts to execute. */
+	/* 初始为 NULL */
     char *announce_ip;      /* IP addr that is gossiped to other sentinels if
                                not NULL. */
+	/* 初始为 0 */
     int announce_port;      /* Port that is gossiped to other sentinels if
                                non zero. */
 } sentinel;
@@ -403,6 +412,7 @@ struct redisCommand sentinelcmds[] = {
 
 /* This function overwrites a few normal Redis config default with Sentinel
  * specific defaults. */
+/* 重写 command table */
 void initSentinelConfig(void) {
     server.port = REDIS_SENTINEL_PORT;
 }
