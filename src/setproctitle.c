@@ -46,16 +46,22 @@
 #if !HAVE_SETPROCTITLE
 #if (defined __linux || defined __APPLE__)
 
+/* 系统当前的环境变量 */
 extern char **environ;
 
+/* 注意是 static 变量 */
 static struct {
 	/* original value */
+	/* argv[0] */
 	const char *arg0;
 
 	/* title space available */
+	/* argv 和 environ 数组中的字符串是顺序线性排列的, base 指向这个顺序排列
+	 * 字符串数组的开头, end 指向其结尾 */
 	char *base, *end;
 
 	 /* pointer to original nul character within base */
+	/* 为 &base[ strlen(base) ] */
 	char *nul;
 
 	_Bool reset;
@@ -76,8 +82,11 @@ static inline size_t spt_min(size_t a, size_t b) {
  * For discussion on the portability of the various methods, see
  * http://lists.freebsd.org/pipermail/freebsd-stable/2008-June/043136.html
  */
+/* clear environ, 但其之前指向的字符串资源是不会被释放的, 因为那些字符串资源
+ * 是存储在静态内存中的, 所以仍然可以用指针指向它们 */
 static int spt_clearenv(void) {
 #if __GLIBC__
+	/* FIXME clearenv 不需要检查返回值吗? */
 	clearenv();
 
 	return 0;
@@ -96,6 +105,7 @@ static int spt_clearenv(void) {
 } /* spt_clearenv() */
 
 
+/* 用 setenv 将 environ 字符串数组中的字符串复制一份 */
 static int spt_copyenv(char *oldenv[]) {
 	extern char **environ;
 	char *eq;
@@ -104,6 +114,7 @@ static int spt_copyenv(char *oldenv[]) {
 	if (environ != oldenv)
 		return 0;
 
+	/* environ == oldenv */
 	if ((error = spt_clearenv()))
 		goto error;
 
@@ -127,6 +138,7 @@ error:
 } /* spt_copyenv() */
 
 
+/* 用 strdup 复制一份 argv 数组字符串 */
 static int spt_copyargs(int argc, char *argv[]) {
 	char *tmp;
 	int i;
@@ -156,10 +168,13 @@ void spt_init(int argc, char *argv[]) {
 	nul = &base[strlen(base)];
 	end = nul + 1;
 
+	/* argv 数组和 envp 数组中的字符串是顺序线性排列的, argv 在前, envp 接在后
+	 * 面, 两个 for 循环之后 end 指向的是这个线性排列的最后+1 位置 */
 	for (i = 0; i < argc || (i >= argc && argv[i]); i++) {
 		if (!argv[i] || argv[i] < end)
 			continue;
 
+		/* argv[i] == end */
 		end = argv[i] + strlen(argv[i]) + 1;
 	}
 
@@ -167,6 +182,7 @@ void spt_init(int argc, char *argv[]) {
 		if (envp[i] < end)
 			continue;
 
+		/* envp[i] == end */
 		end = envp[i] + strlen(envp[i]) + 1;
 	}
 

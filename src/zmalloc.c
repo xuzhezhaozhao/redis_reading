@@ -44,12 +44,18 @@ void zlibc_free(void *ptr) {
 #include "config.h"
 #include "zmalloc.h"
 
+/* 若没有定义宏 HAVE_MALLOC_SIZE, 则在分配的内存块最开头需要手动保存该内存块的
+ * 大小信息, 保存内存块大小的字节数由宏 PREFIX_SIZE 定义, 若定义了宏 
+ * HAVE_MALLOC_SIZE, 说明系统会自动在分配内存头保存长度信息, 且PREFIX_SIZE 大小
+ * 为 0 */
+
 #ifdef HAVE_MALLOC_SIZE
 #define PREFIX_SIZE (0)
 #else
 #if defined(__sun) || defined(__sparc) || defined(__sparc__)
 #define PREFIX_SIZE (sizeof(long long))
 #else
+/* 没有定义宏 HAVE_MALLOC_SIZE */
 #define PREFIX_SIZE (sizeof(size_t))
 #endif
 #endif
@@ -67,6 +73,7 @@ void zlibc_free(void *ptr) {
 #define free(ptr) je_free(ptr)
 #endif
 
+/* 对 used_memory 的原子加减操作 */
 #if defined(__ATOMIC_RELAXED)
 #define update_zmalloc_stat_add(__n) __atomic_add_fetch(&used_memory, (__n), __ATOMIC_RELAXED)
 #define update_zmalloc_stat_sub(__n) __atomic_sub_fetch(&used_memory, (__n), __ATOMIC_RELAXED)
@@ -88,6 +95,9 @@ void zlibc_free(void *ptr) {
 
 #endif
 
+/* 若 zmlloc_thread_safe 为 1 则对 used_memory 进行原子加减操作, 否则直接操作;
+ * 并会将 __n 对齐到 sizeof(long) 再操作 */
+/* used_memory 加 __n(对齐后) */
 #define update_zmalloc_stat_alloc(__n) do { \
     size_t _n = (__n); \
     if (_n&(sizeof(long)-1)) _n += sizeof(long)-(_n&(sizeof(long)-1)); \
@@ -98,6 +108,7 @@ void zlibc_free(void *ptr) {
     } \
 } while(0)
 
+/* used_memory 减 __n(对齐后) */
 #define update_zmalloc_stat_free(__n) do { \
     size_t _n = (__n); \
     if (_n&(sizeof(long)-1)) _n += sizeof(long)-(_n&(sizeof(long)-1)); \
@@ -108,8 +119,11 @@ void zlibc_free(void *ptr) {
     } \
 } while(0)
 
+/* malloc 的总内存 */
 static size_t used_memory = 0;
+/* used_memory 是否需要线程安全 */
 static int zmalloc_thread_safe = 0;
+/* used_memory mutex lock */
 pthread_mutex_t used_memory_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* 内存不够情况下的默认错误处理函数 */
@@ -123,21 +137,25 @@ static void zmalloc_default_oom(size_t size) {
 /* 内存不够情况下错误处理函数 */
 static void (*zmalloc_oom_handler)(size_t) = zmalloc_default_oom;
 
-/* TODO */
+/* 记录分配的内存块总长度, 并包含了错误处理 */
 void *zmalloc(size_t size) {
     void *ptr = malloc(size+PREFIX_SIZE);
 
     if (!ptr) zmalloc_oom_handler(size);
 #ifdef HAVE_MALLOC_SIZE
+	/* PREFIX_SIZE 为 0 */
     update_zmalloc_stat_alloc(zmalloc_size(ptr));
     return ptr;
 #else
+	/* 内存块的大小保存在开头的 PREFIX_SIZE 字节中 */
+	/* 手动在内存块头部保存其长度信息, ptr 为 malloc 得到的指针 */
     *((size_t*)ptr) = size;
     update_zmalloc_stat_alloc(size+PREFIX_SIZE);
     return (char*)ptr+PREFIX_SIZE;
 #endif
 }
 
+/* 记录分配的内存块总长度, 并包含了错误处理 */
 void *zcalloc(size_t size) {
     void *ptr = calloc(1, size+PREFIX_SIZE);
 
@@ -146,12 +164,15 @@ void *zcalloc(size_t size) {
     update_zmalloc_stat_alloc(zmalloc_size(ptr));
     return ptr;
 #else
+	/* 内存块的大小保存在开头的 PREFIX_SIZE 字节中 */
+	/* 手动在内存块头部保存其长度信息, ptr 为 malloc 得到的指针 */
     *((size_t*)ptr) = size;
     update_zmalloc_stat_alloc(size+PREFIX_SIZE);
     return (char*)ptr+PREFIX_SIZE;
 #endif
 }
 
+/* 记录分配的内存块总长度, 并包含了错误处理 */
 void *zrealloc(void *ptr, size_t size) {
 #ifndef HAVE_MALLOC_SIZE
     void *realptr;
@@ -169,6 +190,7 @@ void *zrealloc(void *ptr, size_t size) {
     update_zmalloc_stat_alloc(zmalloc_size(newptr));
     return newptr;
 #else
+	/* 从内存块头部取出其长度信息 */
     realptr = (char*)ptr-PREFIX_SIZE;
     oldsize = *((size_t*)realptr);
     newptr = realloc(realptr,size+PREFIX_SIZE);
@@ -185,6 +207,9 @@ void *zrealloc(void *ptr, size_t size) {
  * malloc itself, given that in that case we store a header with this
  * information as the first bytes of every allocation. */
 #ifndef HAVE_MALLOC_SIZE
+/* 若定义了宏 HAVE_MALLOC_SIZE 说明不需要提供这个函数, malloc 系统会提供, 否则
+ * 就需要自己提供 */
+/* 返回 ptr 指向的内存块的大小 + PREFIX_SIZE(保存其长度的字节数) */
 size_t zmalloc_size(void *ptr) {
     void *realptr = (char*)ptr-PREFIX_SIZE;
     size_t size = *((size_t*)realptr);
@@ -213,6 +238,7 @@ void zfree(void *ptr) {
 #endif
 }
 
+/* 字符串复制, 利用 zmalloc, 也会统计其使用的内存 */
 char *zstrdup(const char *s) {
     size_t l = strlen(s)+1;
     char *p = zmalloc(l);
@@ -221,6 +247,7 @@ char *zstrdup(const char *s) {
     return p;
 }
 
+/* 获得 malloc 分配的总内存 */
 size_t zmalloc_used_memory(void) {
     size_t um;
 
@@ -240,10 +267,12 @@ size_t zmalloc_used_memory(void) {
     return um;
 }
 
+/* 开启线程安全 */
 void zmalloc_enable_thread_safeness(void) {
     zmalloc_thread_safe = 1;
 }
 
+/* 设置内存分配出错时的错误处理函数 */
 void zmalloc_set_oom_handler(void (*oom_handler)(size_t)) {
     zmalloc_oom_handler = oom_handler;
 }
@@ -264,6 +293,8 @@ void zmalloc_set_oom_handler(void (*oom_handler)(size_t)) {
 #include <sys/stat.h>
 #include <fcntl.h>
 
+/* rss: Resident Set Size
+ * 参考: http://stackoverflow.com/questions/7880784/what-is-rss-and-vsz-in-linux-memory-management */
 size_t zmalloc_get_rss(void) {
     int page = sysconf(_SC_PAGESIZE);
     size_t rss;
