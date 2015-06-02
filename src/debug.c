@@ -802,6 +802,7 @@ int memtest_test_linux_anonymous_maps(void) {
 }
 #endif
 
+/* SIGSEGV, SIGBUS, SIGFPE, SIGILL 信号处理函数 */
 void sigsegvHandler(int sig, siginfo_t *info, void *secret) {
     ucontext_t *uc = (ucontext_t*) secret;
     sds infostring, clients;

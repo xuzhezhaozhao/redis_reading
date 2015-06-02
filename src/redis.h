@@ -766,7 +766,9 @@ struct redisServer {
 	/* 此时 client 的 REDIS_CLOSE_ASAP 标志是打开的 */
     list *clients_to_close;     /* Clients to close asynchronously */
     list *slaves, *monitors;    /* List of slaves and MONITORs */
+	/* 初始为 NULL */
     redisClient *current_client; /* Current client, only used on crash report */
+	/* 初始为 0 */
     int clients_paused;         /* True if clients are currently paused */
     mstime_t clients_pause_end_time; /* Time when we undo clients_paused */
     char neterr[ANET_ERR_LEN];   /* Error buffer for anet.c */
@@ -929,6 +931,7 @@ struct redisServer {
 	/* 默认为 LOG_LOCAL0 */
     int syslog_facility;            /* Syslog facility */
     /* Replication (master) */
+	/* 初始为 -1 */
     int slaveseldb;                 /* Last SELECTed DB in replication output */
 	/* 初始 0 */
     long long master_repl_offset;   /* Global replication offset */
@@ -1002,9 +1005,11 @@ struct redisServer {
     unsigned int repl_scriptcache_size; /* Max number of elements. */
     /* Synchronous replication. */
     list *clients_waiting_acks;         /* Clients waiting in WAIT command. */
+	/* 初始为 0 */
     int get_ack_from_slaves;            /* If true we send REPLCONF GETACK. */
     /* Limits */
-	/* 默认为 10000 */
+	/* 默认为 10000, 用户可配置, redis 还有 32 个预留, 加起来超过当前系统
+	 * 限制的话会调整为系统最大可以 open 的文件数目 */
     unsigned int maxclients;            /* Max number of simultaneous clients */
 	/* 初始为 0 */
     unsigned long long maxmemory;   /* Max number of memory bytes to use */

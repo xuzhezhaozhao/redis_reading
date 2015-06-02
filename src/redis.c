@@ -1317,6 +1317,7 @@ void beforeSleep(struct aeEventLoop *eventLoop) {
 
 /* =========================== Server initialization ======================== */
 
+/* 在 initServer 中调用 */
 void createSharedObjects(void) {
     int j;
 
@@ -1572,6 +1573,7 @@ void initServerConfig(void) {
  * If it will not be possible to set the limit accordingly to the configured
  * max number of clients, the function will do the reverse setting
  * server.maxclients to the value that we can actually handle. */
+/* 在 initServer 中调用, 设置最大可 open 文件数量 */
 void adjustOpenFilesLimit(void) {
     rlim_t maxfiles = server.maxclients+REDIS_MIN_RESERVED_FDS;
     struct rlimit limit;
@@ -1756,6 +1758,7 @@ void resetServerStats(void) {
     server.stat_net_output_bytes = 0;
 }
 
+/* 设置信号处理函数, 初始化共享变量等 */
 void initServer(void) {
     int j;
 
@@ -3478,6 +3481,7 @@ void redisAsciiArt(void) {
     zfree(buf);
 }
 
+/* SIGINT, SIGTERM 信号处理函数 */
 static void sigShutdownHandler(int sig) {
     char *msg;
 
@@ -3520,6 +3524,7 @@ void setupSignalHandlers(void) {
     sigaction(SIGINT, &act, NULL);
 
 #ifdef HAVE_BACKTRACE
+	/* debug 用 */
     sigemptyset(&act.sa_mask);
     act.sa_flags = SA_NODEFER | SA_RESETHAND | SA_SIGINFO;
     act.sa_sigaction = sigsegvHandler;
