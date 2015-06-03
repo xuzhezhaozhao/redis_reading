@@ -190,7 +190,7 @@ static void aeGetTime(long *seconds, long *milliseconds)
     *milliseconds = tv.tv_usec/1000;
 }
 
-/* 结果保存在 *sec, *ms 中 */
+/* 加上一点时间, 结果保存在 *sec, *ms 中 */
 static void aeAddMillisecondsToNow(long long milliseconds, long *sec, long *ms) {
     long cur_sec, cur_ms, when_sec, when_ms;
 
@@ -267,7 +267,9 @@ static aeTimeEvent *aeSearchNearestTimer(aeEventLoop *eventLoop)
     aeTimeEvent *te = eventLoop->timeEventHead;
     aeTimeEvent *nearest = NULL;
 
+	int cnt = 0;
     while(te) {
+		++cnt;
         if (!nearest || te->when_sec < nearest->when_sec ||
                 (te->when_sec == nearest->when_sec &&
                  te->when_ms < nearest->when_ms))
@@ -293,9 +295,9 @@ static int processTimeEvents(aeEventLoop *eventLoop) {
      * events to be processed ASAP when this happens: the idea is that
      * processing events earlier is less dangerous than delaying them
      * indefinitely, and practice suggests it is. */
-	/* TODO xzz 啥时候出现这种情况? */
     if (now < eventLoop->lastTime) {
-		/* 事件将全部被处理 */
+		/* 由于系统问题导致 system clock 出错才会出现这种情况,
+		 * 此时事件将全部被处理 */
         te = eventLoop->timeEventHead;
         while(te) {
             te->when_sec = 0;
@@ -318,9 +320,12 @@ static int processTimeEvents(aeEventLoop *eventLoop) {
         if (now_sec > te->when_sec ||
             (now_sec == te->when_sec && now_ms >= te->when_ms))
         {
+			/* now >= when */
             int retval;
 
             id = te->id;
+			/* aeMain() 中调用的话回调函数为 serverCron(), 其返回值为 
+			 * 1000/server.hz */
             retval = te->timeProc(eventLoop, id, te->clientData);
             processed++;
             /* After an event is processed our time event list may
@@ -337,7 +342,8 @@ static int processTimeEvents(aeEventLoop *eventLoop) {
              * deletion (putting references to the nodes to delete into
              * another linked list). */
             if (retval != AE_NOMORE) {
-				/* 没有完成, 加一个时间, 留在链表中, 之后还要处理 */
+				/* aeMain() 中调用会进入这里, 使得 while 循环不停, 触发时间
+				 * when 加上 1000/server.hz , 时间继续留在链表中, 之后还要处理 */
                 aeAddMillisecondsToNow(retval,&te->when_sec,&te->when_ms);
             } else {
                 aeDeleteTimeEvent(eventLoop, id);
@@ -378,9 +384,11 @@ int aeProcessEvents(aeEventLoop *eventLoop, int flags)
     if (eventLoop->maxfd != -1 ||
         ((flags & AE_TIME_EVENTS) && !(flags & AE_DONT_WAIT))) {
         int j;
+		/* 在 aeMain 中调用会进入到这里面 */
         aeTimeEvent *shortest = NULL;
         struct timeval tv, *tvp;
 
+		/* tvp 保存 epoll 的等待时间 */
         if (flags & AE_TIME_EVENTS && !(flags & AE_DONT_WAIT))
             shortest = aeSearchNearestTimer(eventLoop);
         if (shortest) {
@@ -390,6 +398,7 @@ int aeProcessEvents(aeEventLoop *eventLoop, int flags)
              * timer to fire. */
             aeGetTime(&now_sec, &now_ms);
             tvp = &tv;
+			/* tvp 保存 when 与 now 时间的差值 */
             tvp->tv_sec = shortest->when_sec - now_sec;
             if (shortest->when_ms < now_ms) {
                 tvp->tv_usec = ((shortest->when_ms+1000) - now_ms)*1000;
@@ -412,6 +421,7 @@ int aeProcessEvents(aeEventLoop *eventLoop, int flags)
             }
         }
 
+		/* epoll 的等待时间 tvp 小于最近(时间)的 time event 发生时间 */
         numevents = aeApiPoll(eventLoop, tvp);
         for (j = 0; j < numevents; j++) {
             aeFileEvent *fe = &eventLoop->events[eventLoop->fired[j].fd];
@@ -463,7 +473,7 @@ int aeWait(int fd, int mask, long long milliseconds) {
     }
 }
 
-/* 事件循环 */
+/* redis 事件驱动循环 */
 void aeMain(aeEventLoop *eventLoop) {
     eventLoop->stop = 0;
     while (!eventLoop->stop) {

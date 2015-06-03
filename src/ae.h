@@ -43,6 +43,7 @@
 #define AE_FILE_EVENTS 1
 #define AE_TIME_EVENTS 2
 #define AE_ALL_EVENTS (AE_FILE_EVENTS|AE_TIME_EVENTS)
+/* 开启这个标志后 epoll 的 wait time 为 0 */
 #define AE_DONT_WAIT 4
 
 #define AE_NOMORE -1
@@ -74,10 +75,15 @@ typedef struct aeTimeEvent {
 	/* 事件触发时间 */
     long when_sec; /* seconds */
     long when_ms; /* milliseconds */
-	/* 事件处理的回调函数, 在 processTimeEvents 中调用 */
+	/* 事件处理的回调函数, 在 processTimeEvents 中调用, 初始时有一个
+	 * redis.c serverCron() 的 time event, 当返回值不为 AE_NOMORE(-1) 时, 则
+	 * 该 time event 不从 time event list 中删除, 且下一次事件触发时间为
+	 * (当前时间+返回值), 返回值单位为 毫秒; 当返回值为 AE_NOMORE 时, 则删除
+	 * 该事件 */
     aeTimeProc *timeProc;
-	/* 删除一个 time event 时调用 */
+	/* 删除一个 time event 时调用, serverCron() 事件的这个函数为 NULL */
     aeEventFinalizerProc *finalizerProc;
+	/* serverCron() 事件的这个域为 NULL */
     void *clientData;
 	/* 链表结构, 下一个事件指针 */
     struct aeTimeEvent *next;
@@ -97,7 +103,7 @@ typedef struct aeEventLoop {
     int setsize; /* max number of file descriptors tracked */
 	/* 初始为 0 */
     long long timeEventNextId;
-	/* 上一次处理 time events 的时间 */
+	/* 最后一次处理 time events 的时间 */
     time_t lastTime;     /* Used to detect system clock skew */
     aeFileEvent *events; /* Registered events */
 	/* 就绪的事件 */

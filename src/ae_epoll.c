@@ -124,8 +124,8 @@ static void aeApiDelEvent(aeEventLoop *eventLoop, int fd, int delmask) {
     }
 }
 
-/* 调用 epoll_wait 等待注册事件发生, tvp 为 NULL 表示 wait indefinitely;
- * 就绪事件放入 fired 数组中, 返回就绪事件的个数 */
+/* 调用 epoll_wait 等待注册的文件事件发生, tvp 为 NULL 表示 wait indefinitely,
+ * 否则表示等待时间; 就绪事件放入 fired 数组中, 返回就绪事件的个数 */
 static int aeApiPoll(aeEventLoop *eventLoop, struct timeval *tvp) {
     aeApiState *state = eventLoop->apidata;
     int retval, numevents = 0;

@@ -764,6 +764,7 @@ int activeExpireCycleTryExpire(redisDb *db, dictEntry *de, long long now) {
  * executed, where the time limit is a percentage of the REDIS_HZ period
  * as specified by the REDIS_EXPIRELOOKUPS_TIME_PERC define. */
 
+/* 在 beforeSleep() 中以 type ACTIVE_EXPIRE_CYCLE_FAST 调用一次 */
 void activeExpireCycle(int type) {
     /* This function has some global state in order to continue the work
      * incrementally across calls. */
@@ -1077,7 +1078,8 @@ void updateCachedTime(void) {
  * a macro is used: run_with_period(milliseconds) { .... }
  */
 
-/* initServer 中创建了这一 time event */
+/* initServer 中创建了这一 time event, aeMain() 的事件循环中会会不断处理这个
+ * event */
 int serverCron(struct aeEventLoop *eventLoop, long long id, void *clientData) {
     int j;
     REDIS_NOTUSED(eventLoop);
@@ -1274,6 +1276,7 @@ int serverCron(struct aeEventLoop *eventLoop, long long id, void *clientData) {
 /* This function gets called every time Redis is entering the
  * main loop of the event driven library, that is, before to sleep
  * for ready file descriptors. */
+/* activeExpireCycle() ... processUnblockedClients() ... flushAppendOnlyFile() */
 void beforeSleep(struct aeEventLoop *eventLoop) {
     REDIS_NOTUSED(eventLoop);
 
