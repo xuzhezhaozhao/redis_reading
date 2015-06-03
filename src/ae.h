@@ -91,8 +91,11 @@ typedef struct aeFiredEvent {
 
 /* State of an event based program */
 typedef struct aeEventLoop {
+	/* 初始为 -1 */
     int maxfd;   /* highest file descriptor currently registered */
+	/* 初始为 server.maxclients+REDIS_EVENTLOOP_FDSET_INCR */
     int setsize; /* max number of file descriptors tracked */
+	/* 初始为 0 */
     long long timeEventNextId;
 	/* 上一次处理 time events 的时间 */
     time_t lastTime;     /* Used to detect system clock skew */
@@ -103,9 +106,9 @@ typedef struct aeEventLoop {
     aeTimeEvent *timeEventHead;
 	/* 控制 ae stop */
     int stop;
-	/* 保存的类型可以为 aeApiState */
+	/* 保存的类型可以为 aeApiState, 采用不同的实现时这个类型不一样 */
     void *apidata; /* This is used for polling API specific data */
-	/* 函数, 在 aeMain 中调用 */
+	/* 函数, 在 aeMain 中调用, 初始化设置为 redis.c beforeSleep() */
     aeBeforeSleepProc *beforesleep;
 } aeEventLoop;
 

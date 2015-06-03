@@ -1077,6 +1077,7 @@ void updateCachedTime(void) {
  * a macro is used: run_with_period(milliseconds) { .... }
  */
 
+/* initServer 中创建了这一 time event */
 int serverCron(struct aeEventLoop *eventLoop, long long id, void *clientData) {
     int j;
     REDIS_NOTUSED(eventLoop);
@@ -1681,6 +1682,7 @@ void checkTcpBacklogSettings(void) {
  * impossible to bind, or no bind addresses were specified in the server
  * configuration but the function is not able to bind * for at least
  * one of the IPv4 or IPv6 protocols. */
+/* 默认初始时 port 为 6379, count 为 0, 初始时传入的为 &server.ipfd_count */
 int listenToPort(int port, int *fds, int *count) {
     int j;
 
@@ -1758,7 +1760,11 @@ void resetServerStats(void) {
     server.stat_net_output_bytes = 0;
 }
 
-/* 设置信号处理函数, 初始化共享变量等 */
+/* 设置信号处理函数, 初始化共享变量, 监听端口, 初始化 sever 变量, 
+ * 创建 serverCron() time event, that's our main way to process
+ * background operations.
+ * 创建 acceptTcpHandler() file event
+ * 创建 acceptUnixHandler() file event */
 void initServer(void) {
     int j;
 
@@ -1866,6 +1872,7 @@ void initServer(void) {
                     "Unrecoverable error creating server.ipfd file event.");
             }
     }
+	/* unix socket */
     if (server.sofd > 0 && aeCreateFileEvent(server.el,server.sofd,AE_READABLE,
         acceptUnixHandler,NULL) == AE_ERR) redisPanic("Unrecoverable error creating server.sofd file event.");
 
@@ -1890,6 +1897,7 @@ void initServer(void) {
         server.maxmemory_policy = REDIS_MAXMEMORY_NO_EVICTION;
     }
 
+	/* TODO xzz */
     if (server.cluster_enabled) clusterInit();
     replicationScriptCacheInit();
     scriptingInit();
@@ -3392,6 +3400,7 @@ void linuxMemoryWarnings(void) {
 }
 #endif /* __linux__ */
 
+/* 初始时 server.daemonize 为 1 会调用 */
 void createPidFile(void) {
     /* Try to write the pid file in a best-effort way. */
     FILE *fp = fopen(server.pidfile,"w");
@@ -3560,6 +3569,7 @@ void loadDataFromDisk(void) {
             redisLog(REDIS_NOTICE,"DB loaded from disk: %.3f seconds",
                 (float)(ustime()-start)/1000000);
         } else if (errno != ENOENT) {
+			/* ENOENT: No such file or directory (POSIX.1) */
             redisLog(REDIS_WARNING,"Fatal error loading the DB: %s. Exiting.",strerror(errno));
             exit(1);
         }

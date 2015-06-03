@@ -475,15 +475,22 @@ struct evictionPoolEntry {
  * by integers from 0 (the default database) up to the max configured
  * database. The database number is the 'id' field in the structure. */
 typedef struct redisDb {
+	/* dbDictType */
     dict *dict;                 /* The keyspace for this DB */
+	/* keyptrDictType */
     dict *expires;              /* Timeout of keys with a timeout set */
 	/* key 为 client 等待的数据, value 为等待该 key 的 clients list */
+	/* keylistDictType */
     dict *blocking_keys;        /* Keys with clients waiting for data (BLPOP) */
+	/* setDictType */
     dict *ready_keys;           /* Blocked keys that received a PUSH */
 	/* watched key -> clients, 值为 clients list */
+	/* keylistDictType */
     dict *watched_keys;         /* WATCHED keys for MULTI/EXEC CAS */
+	/* 初始为 evictionPoolAlloc(), pool 大小默认为 16 */
     struct evictionPoolEntry *eviction_pool;    /* Eviction pool of keys */
     int id;                     /* Database ID */
+	/* 初始为 0 */
     long long avg_ttl;          /* Average TTL, just for stats */
 } redisDb;
 
@@ -556,6 +563,7 @@ typedef struct redisClient {
     robj **argv;
 	/* 当前命令和上一个命令 */
     struct redisCommand *cmd, *lastcmd;
+	/* REDIS_REQ_MULTIBULK or REDIS_REQ_INLINE */
     int reqtype;
     int multibulklen;       /* number of multi bulk arguments left to read */
     long bulklen;           /* length of bulk argument in multi bulk request */
@@ -563,8 +571,7 @@ typedef struct redisClient {
 	 * listSetFreeMethod(c->reply,decrRefCountVoid); 
 	 * listSetDupMethod(c->reply,dupClientReplyValue);
 	 * 
-	 * 值为 sds 类型
-	 */
+	 * 值为 sds 类型 */
     list *reply;
 	/* reply list objects 占用内存的总数 */
     unsigned long reply_bytes; /* Tot bytes of objects in reply list */
@@ -726,6 +733,7 @@ struct redisServer {
     dict *commands;             /* Command table */
 	/* 初始为 dictCreate(&commandTableDictType,NULL) */ 
     dict *orig_commands;        /* Command table before command renaming. */
+	/* 初始为 aeCreateEventLoop(server.maxclients+REDIS_EVENTLOOP_FDSET_INCR) */
     aeEventLoop *el;
     unsigned lruclock:REDIS_LRU_BITS; /* Clock for LRU eviction */
 	/* 初始为 0 */
@@ -737,6 +745,7 @@ struct redisServer {
 	/* 初始为 "/var/run/redis.pid" */
     char *pidfile;              /* PID file path */
     int arch_bits;              /* 32 or 64 depending on sizeof(long) */
+	/* 初始为 0 */
     int cronloops;              /* Number of times the cron function run */
 	/* 标识当前 server instance */
     char runid[REDIS_RUN_ID_SIZE+1];  /* ID always different at every exec. */
@@ -749,13 +758,15 @@ struct redisServer {
 	/* 默认为 511 */
     int tcp_backlog;            /* TCP listen() backlog */
     char *bindaddr[REDIS_BINDADDR_MAX]; /* Addresses we should bind to */
-	/* 初始为 0 */
+	/* 初始默认为 0 */
     int bindaddr_count;         /* Number of addresses in server.bindaddr[] */
 	/* 初始为 NULL */
     char *unixsocket;           /* UNIX socket path */
     mode_t unixsocketperm;      /* UNIX socket permission */
+	/* 初始时, 若没有指定任何任何配置文件, 则会 bind * (ipv4, ipv6), 此时
+	 * ipfd_count 为 2 */
     int ipfd[REDIS_BINDADDR_MAX]; /* TCP socket file descriptors */
-	/* 初始为 0 */
+	/* listenToPort() 初始化这个值 */
     int ipfd_count;             /* Used slots in ipfd[] */
 	/* 初始为 -1 */
     int sofd;                   /* Unix socket file descriptor */
@@ -789,12 +800,14 @@ struct redisServer {
                         *rpopCommand;
     /* Fields used only for stats */
     time_t stat_starttime;          /* Server start time */
+	/* 以下初始为 0 */
     long long stat_numcommands;     /* Number of processed commands */
     long long stat_numconnections;  /* Number of connections received */
     long long stat_expiredkeys;     /* Number of expired keys */
     long long stat_evictedkeys;     /* Number of evicted keys (maxmemory) */
     long long stat_keyspace_hits;   /* Number of successful lookups of keys */
     long long stat_keyspace_misses; /* Number of failed lookups of keys */
+	/* 初始为 0 */
     size_t stat_peak_memory;        /* Max used memory record */
     long long stat_fork_time;       /* Time needed to perform latest fork() */
     double stat_fork_rate;          /* Fork rate in GB/sec. */
@@ -802,21 +815,30 @@ struct redisServer {
     long long stat_sync_full;       /* Number of full resyncs with slaves. */
     long long stat_sync_partial_ok; /* Number of accepted PSYNC requests. */
     long long stat_sync_partial_err;/* Number of unaccepted PSYNC requests. */
+	/* end, 以上初始为 0 */
+
     list *slowlog;                  /* SLOWLOG list of commands */
     long long slowlog_entry_id;     /* SLOWLOG current entry ID */
 	/* 默认 10000 */
     long long slowlog_log_slower_than; /* SLOWLOG time limit (to get logged) */
 	/* 默认 128 */
     unsigned long slowlog_max_len;     /* SLOWLOG max number of items logged */
+	/* 初始为 0 */
     size_t resident_set_size;       /* RSS sampled in serverCron(). */
+	/* 初始为 0 */
     long long stat_net_input_bytes; /* Bytes read from network. */
+	/* 初始为 0 */
     long long stat_net_output_bytes; /* Bytes written to network. */
     /* The following two are used to track instantaneous metrics, like
      * number of operations per second, network traffic. */
     struct {
+		/* 初始为 server 启动时间 */
         long long last_sample_time; /* Timestamp of last sample in ms */
+		/* 初始为 0 */
         long long last_sample_count;/* Count in last sample */
+		/* 初始为 0 */
         long long samples[REDIS_METRIC_SAMPLES];
+		/* 初始为 0 */
         int idx;
     } inst_metric[REDIS_METRIC_COUNT];
     /* Configuration */
@@ -854,10 +876,13 @@ struct redisServer {
     off_t aof_current_size;         /* AOF current size. */
 	/* 开始 rewrite process 后置为 0, 初始为 0 */
     int aof_rewrite_scheduled;      /* Rewrite once BGSAVE terminates. */
+	/* 初始为 -1 */
     pid_t aof_child_pid;            /* PID if rewriting process */
 	/* 结点为 aofrwblock 类型, aof.c, aof rewrite process 结束后需要追加到
 	 * append only file 之后 */
+	/* 初始为空 list */
     list *aof_rewrite_buf_blocks;   /* Hold changes during an AOF rewrite. */
+	/* 初始为 "" */
     sds aof_buf;      /* AOF buffer, written before entering the event loop */
 	/* 初始为 -1 */
     int aof_fd;       /* File descriptor of currently selected AOF file */
@@ -876,7 +901,9 @@ struct redisServer {
     unsigned long aof_delayed_fsync;  /* delayed AOF fsync() counter */
 	/* 初始为 1 */
     int aof_rewrite_incremental_fsync;/* fsync incrementally while rewriting? */
+	/* 初始为 OK */
     int aof_last_write_status;      /* REDIS_OK or REDIS_ERR */
+	/* 初始为 0 */
     int aof_last_write_errno;       /* Valid if aof_last_write_status is ERR */
 	/* 初始为 1 */
     int aof_load_truncated;         /* Don't stop on unexpected AOF EOF. */
@@ -896,9 +923,10 @@ struct redisServer {
 	 * 的 diff */
     sds aof_child_diff;             /* AOF diff accumulator child side. */
     /* RDB persistence */
+	/* 初始为 0 */
     long long dirty;                /* Changes to DB from the last save */
     long long dirty_before_bgsave;  /* Used to restore dirty on failed BGSAVE */
-	/* 为 -1 表示无该进程 */
+	/* 为 -1 表示无该进程, 初始为 -1 */
     pid_t rdb_child_pid;            /* PID of RDB saving child */
 	/* 初始为 { {60*60,1}, {300,100}, {60,10000} } */
     struct saveparam *saveparams;   /* Save points array for RDB */
@@ -909,11 +937,17 @@ struct redisServer {
     int rdb_compression;            /* Use compression in RDB? */
 	/* 默认为 1 */
     int rdb_checksum;               /* Use RDB checksum? */
+	/* 初始为 server 启动时间 */
     time_t lastsave;                /* Unix time of last successful save */
+	/* 初始为 0 */
     time_t lastbgsave_try;          /* Unix time of last attempted bgsave */
+	/* 初始为 -1 */
     time_t rdb_save_time_last;      /* Time used by last RDB save run. */
+	/* 初始为 -1 */
     time_t rdb_save_time_start;     /* Current RDB save start time. */
+	/* 初始为 REDIS_RDB_CHILD_TYPE_NONE */
     int rdb_child_type;             /* Type of save by active child. */
+	/* 初始为 OK */
     int lastbgsave_status;          /* REDIS_OK or REDIS_ERR */
 	/* 默认为 1 */
     int stop_writes_on_bgsave_err;  /* Don't allow writes if can't BGSAVE */
@@ -957,6 +991,7 @@ struct redisServer {
     int repl_min_slaves_to_write;   /* Min number of slaves to write. */
 	/* 默认 10 */
     int repl_min_slaves_max_lag;    /* Max lag of <count> slaves to write. */
+	/* 初始 0 */
     int repl_good_slaves_count;     /* Number of slaves with lag <= max_lag. */
 	/* 初始 0 */
     int repl_diskless_sync;         /* Send RDB to slaves sockets directly. */
@@ -1046,9 +1081,11 @@ struct redisServer {
     size_t zset_max_ziplist_value;
 	/* HyperLogLog 结构从 sparse 到 dense 转换的空间大小临界值, 默认 3000 */
     size_t hll_sparse_max_bytes;
+	/* cached unix time */
     time_t unixtime;        /* Unix time sampled every cron cycle. */
     long long mstime;       /* Like 'unixtime' but with milliseconds resolution. */
     /* Pubsub */
+	/* keylistDictType */
     dict *pubsub_channels;  /* Map channels to list of subscribed clients */
 	/* 注意 patterns 没有用 map, 结点类型为 pubsubPattern */
     list *pubsub_patterns;  /* A list of pubsub_patterns */
@@ -1091,6 +1128,7 @@ struct redisServer {
     /* Latency monitor */
 	/* 默认 0 */
     long long latency_monitor_threshold;
+	/* latencyTimeSeriesDictType */
     dict *latency_events;
     /* Assert & bug reporting */
 	/* 默认为 "<no assertion failed>" */

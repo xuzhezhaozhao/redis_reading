@@ -82,10 +82,12 @@ int anetSetBlock(char *err, int fd, int non_block) {
     return ANET_OK;
 }
 
+/* 开启文件描述符的 O_NONBLOCK 标志 */
 int anetNonBlock(char *err, int fd) {
     return anetSetBlock(err,fd,1);
 }
 
+/* 关闭文件描述符的 O_NONBLOCK 标志 */
 int anetBlock(char *err, int fd) {
     return anetSetBlock(err,fd,0);
 }
@@ -247,6 +249,7 @@ static int anetSetReuseAddr(char *err, int fd) {
     return ANET_OK;
 }
 
+/* 新建 socket descriptor */
 static int anetCreateSocket(char *err, int domain) {
     int s;
     if ((s = socket(domain, SOCK_STREAM, 0)) == -1) {
@@ -418,6 +421,7 @@ int anetWrite(int fd, char *buf, int count)
     return totlen;
 }
 
+/* s: socket file descriptor */
 static int anetListen(char *err, int s, struct sockaddr *sa, socklen_t len, int backlog) {
     if (bind(s,sa,len) == -1) {
         anetSetError(err, "bind: %s", strerror(errno));
@@ -443,6 +447,7 @@ static int anetV6Only(char *err, int s) {
     return ANET_OK;
 }
 
+/* 在初始化的调用中 bindaddr 为 NULL, bind 并 listen 端口 */
 static int _anetTcpServer(char *err, int port, char *bindaddr, int af, int backlog)
 {
     int s, rv;
@@ -455,6 +460,13 @@ static int _anetTcpServer(char *err, int port, char *bindaddr, int af, int backl
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = AI_PASSIVE;    /* No effect if bindaddr != NULL */
 
+	/* If  the  AI_PASSIVE  flag is specified in hints.ai_flags, and node is NULL, then
+     * the returned socket addresses will be suitable for bind(2)ing a socket that will
+     * accept(2)  connections.   The returned socket address will contain the "wildcard
+     * address" (INADDR_ANY for IPv4 addresses,  IN6ADDR_ANY_INIT  for  IPv6  address).
+     * The  wildcard address is used by applications (typically servers) that intend to
+     * accept connections on any of the hosts's network  addresses.   If  node  is  not
+     * NULL, then the AI_PASSIVE flag is ignored. */
     if ((rv = getaddrinfo(bindaddr,_port,&hints,&servinfo)) != 0) {
         anetSetError(err, "%s", gai_strerror(rv));
         return ANET_ERR;
@@ -480,16 +492,20 @@ end:
     return s;
 }
 
+/* 监听端口 */
 int anetTcpServer(char *err, int port, char *bindaddr, int backlog)
 {
     return _anetTcpServer(err, port, bindaddr, AF_INET, backlog);
 }
 
+/* 监听端口 */
 int anetTcp6Server(char *err, int port, char *bindaddr, int backlog)
 {
     return _anetTcpServer(err, port, bindaddr, AF_INET6, backlog);
 }
 
+/* path: UNIX socket path
+ * 返回 socket descriptor, 出错返回 ANET_ERR */
 int anetUnixServer(char *err, char *path, mode_t perm, int backlog)
 {
     int s;
@@ -508,6 +524,7 @@ int anetUnixServer(char *err, char *path, mode_t perm, int backlog)
     return s;
 }
 
+/* 当被信号中断时重启 accept */
 static int anetGenericAccept(char *err, int s, struct sockaddr *sa, socklen_t *len) {
     int fd;
     while(1) {
@@ -525,6 +542,7 @@ static int anetGenericAccept(char *err, int s, struct sockaddr *sa, socklen_t *l
     return fd;
 }
 
+/* *ip 返回 ip 地址, *port 返回端口号 */
 int anetTcpAccept(char *err, int s, char *ip, size_t ip_len, int *port) {
     int fd;
     struct sockaddr_storage sa;

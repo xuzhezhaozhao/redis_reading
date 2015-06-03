@@ -56,8 +56,9 @@ static struct {
 	const char *arg0;
 
 	/* title space available */
-	/* argv 和 environ 数组中的字符串是顺序线性排列的, base 指向这个顺序排列
-	 * 字符串数组的开头, end 指向其结尾 */
+	/* 若没有定义 USE_SETPROCTITLE 宏则: argv 和 environ 数组中的字符串是
+	 * 顺序线性排列的, base 指向这个顺序排列字符串数组的开头, end 指向其结尾; 
+	 * 若定义了 USE_SETPROCTITLE 宏则使用 setproctitle() 函数来设置 */
 	char *base, *end;
 
 	 /* pointer to original nul character within base */
@@ -229,6 +230,7 @@ error:
 #define SPT_MAXTITLE 255
 #endif
 
+/* 宏 USE_SETPROCTITLE 定义了则调用 */
 void setproctitle(const char *fmt, ...) {
 	char buf[SPT_MAXTITLE + 1]; /* use buffer in case argv[0] is passed */
 	va_list ap;
@@ -261,7 +263,17 @@ void setproctitle(const char *fmt, ...) {
 	nul = &SPT.base[len];
 
 	if (nul < SPT.nul) {
-		*SPT.nul = '.';
+		len = vsnprintf(buf, sizeof buf, fmt, ap);
+		va_end(ap);
+	} else {
+		len = snprintf(buf, sizeof buf, "%s", SPT.arg0);
+	}
+
+	if (len <= 0)
+		{ error = errno; goto error; }
+
+	if (!SPT.reset) {
+			*SPT.nul = '.';
 	} else if (nul == SPT.nul && &nul[1] < SPT.end) {
 		*SPT.nul = ' ';
 		*++nul = '\0';

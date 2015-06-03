@@ -89,6 +89,7 @@ void *bioProcessBackgroundJobs(void *arg);
 #define REDIS_THREAD_STACK_SIZE (1024*1024*4)
 
 /* Initialize the background system, spawning the thread. */
+/* server 启动时会调用 */
 void bioInit(void) {
     pthread_attr_t attr;
     pthread_t thread;

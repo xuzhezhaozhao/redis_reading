@@ -64,6 +64,8 @@ int listMatchObjects(void *a, void *b) {
 }
 
 /* fd 为 -1 时看下面的注释 */
+/* fd 不为 -1 时为 accept server 时返回的 descriptor, 创建 client->fd READABLE
+ * 事件, 回调函数为 readQueryFromClient() */
 redisClient *createClient(int fd) {
     redisClient *c = zmalloc(sizeof(redisClient));
 
@@ -71,7 +73,6 @@ redisClient *createClient(int fd) {
      * This is useful since all the Redis commands needs to be executed
      * in the context of a client. When commands are executed in other
      * contexts (for instance a Lua script) we need a non connected client. */
-	/* TODO xzz */
     if (fd != -1) {
         anetNonBlock(NULL,fd);
         anetEnableTcpNoDelay(NULL,fd);
@@ -592,6 +593,7 @@ void copyClientOutputBuffer(redisClient *dst, redisClient *src) {
 }
 
 #define MAX_ACCEPTS_PER_CALL 1000
+/* fd 为使用 accept 命令连接 server 获得的 descriptor, 创建 client 并连接 server */
 static void acceptCommonHandler(int fd, int flags) {
     redisClient *c;
     if ((c = createClient(fd)) == NULL) {
@@ -620,6 +622,7 @@ static void acceptCommonHandler(int fd, int flags) {
     c->flags |= flags;
 }
 
+/* 回调函数, client 客户端连接 sever */
 void acceptTcpHandler(aeEventLoop *el, int fd, void *privdata, int mask) {
     int cport, cfd, max = MAX_ACCEPTS_PER_CALL;
     char cip[REDIS_IP_STR_LEN];
@@ -640,6 +643,7 @@ void acceptTcpHandler(aeEventLoop *el, int fd, void *privdata, int mask) {
     }
 }
 
+/* server 启动时会创建 fd READABLE 事件 */
 void acceptUnixHandler(aeEventLoop *el, int fd, void *privdata, int mask) {
     int cfd, max = MAX_ACCEPTS_PER_CALL;
     REDIS_NOTUSED(el);
@@ -1135,6 +1139,7 @@ int processMultibulkBuffer(redisClient *c) {
     return REDIS_ERR;
 }
 
+/* readQueryFromClient() 最后调用 */
 void processInputBuffer(redisClient *c) {
     /* Keep processing while there is something in the input buffer */
     while(sdslen(c->querybuf)) {
@@ -1177,6 +1182,8 @@ void processInputBuffer(redisClient *c) {
     }
 }
 
+/* 回调函数, 当 client fd READABLE 时调用, fd READABLE 说明 server 给 client
+ * reply 了 */
 void readQueryFromClient(aeEventLoop *el, int fd, void *privdata, int mask) {
     redisClient *c = (redisClient*) privdata;
     int nread, readlen;

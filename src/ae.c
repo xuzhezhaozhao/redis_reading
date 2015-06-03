@@ -206,6 +206,8 @@ static void aeAddMillisecondsToNow(long long milliseconds, long *sec, long *ms) 
 }
 
 /* 返回创建的 time event id */
+/* server 启动的时候会创建 severCron() time event, 此时 milliseconds 为 1, 
+ * clientData, finalizerProc 都为 NULL */
 long long aeCreateTimeEvent(aeEventLoop *eventLoop, long long milliseconds,
         aeTimeProc *proc, void *clientData,
         aeEventFinalizerProc *finalizerProc)
