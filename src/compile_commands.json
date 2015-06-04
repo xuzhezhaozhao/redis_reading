@@ -1,0 +1,277 @@
+[
+    {
+        "command": "cc -std=c99 -pedantic -DREDIS_STATIC= -Wall -W -O2 -g -ggdb -I../deps/hiredis -I../deps/linenoise -I../deps/lua/src -DUSE_JEMALLOC -I../deps/jemalloc/include -c adlist.c", 
+        "directory": "/home/xzz/redis/src", 
+        "file": "/home/xzz/redis/src/adlist.c"
+    }, 
+    {
+        "command": "cc -std=c99 -pedantic -DREDIS_STATIC= -Wall -W -O2 -g -ggdb -I../deps/hiredis -I../deps/linenoise -I../deps/lua/src -DUSE_JEMALLOC -I../deps/jemalloc/include -c ae.c", 
+        "directory": "/home/xzz/redis/src", 
+        "file": "/home/xzz/redis/src/ae.c"
+    }, 
+    {
+        "command": "cc -std=c99 -pedantic -DREDIS_STATIC= -Wall -W -O2 -g -ggdb -I../deps/hiredis -I../deps/linenoise -I../deps/lua/src -DUSE_JEMALLOC -I../deps/jemalloc/include -c anet.c", 
+        "directory": "/home/xzz/redis/src", 
+        "file": "/home/xzz/redis/src/anet.c"
+    }, 
+    {
+        "command": "cc -std=c99 -pedantic -DREDIS_STATIC= -Wall -W -O2 -g -ggdb -I../deps/hiredis -I../deps/linenoise -I../deps/lua/src -DUSE_JEMALLOC -I../deps/jemalloc/include -c dict.c", 
+        "directory": "/home/xzz/redis/src", 
+        "file": "/home/xzz/redis/src/dict.c"
+    }, 
+    {
+        "command": "cc -std=c99 -pedantic -DREDIS_STATIC= -Wall -W -O2 -g -ggdb -I../deps/hiredis -I../deps/linenoise -I../deps/lua/src -DUSE_JEMALLOC -I../deps/jemalloc/include -c redis.c", 
+        "directory": "/home/xzz/redis/src", 
+        "file": "/home/xzz/redis/src/redis.c"
+    }, 
+    {
+        "command": "cc -std=c99 -pedantic -DREDIS_STATIC= -Wall -W -O2 -g -ggdb -I../deps/hiredis -I../deps/linenoise -I../deps/lua/src -DUSE_JEMALLOC -I../deps/jemalloc/include -c sds.c", 
+        "directory": "/home/xzz/redis/src", 
+        "file": "/home/xzz/redis/src/sds.c"
+    }, 
+    {
+        "command": "cc -std=c99 -pedantic -DREDIS_STATIC= -Wall -W -O2 -g -ggdb -I../deps/hiredis -I../deps/linenoise -I../deps/lua/src -DUSE_JEMALLOC -I../deps/jemalloc/include -c zmalloc.c", 
+        "directory": "/home/xzz/redis/src", 
+        "file": "/home/xzz/redis/src/zmalloc.c"
+    }, 
+    {
+        "command": "cc -std=c99 -pedantic -DREDIS_STATIC= -Wall -W -O2 -g -ggdb -I../deps/hiredis -I../deps/linenoise -I../deps/lua/src -DUSE_JEMALLOC -I../deps/jemalloc/include -c lzf_c.c", 
+        "directory": "/home/xzz/redis/src", 
+        "file": "/home/xzz/redis/src/lzf_c.c"
+    }, 
+    {
+        "command": "cc -std=c99 -pedantic -DREDIS_STATIC= -Wall -W -O2 -g -ggdb -I../deps/hiredis -I../deps/linenoise -I../deps/lua/src -DUSE_JEMALLOC -I../deps/jemalloc/include -c lzf_d.c", 
+        "directory": "/home/xzz/redis/src", 
+        "file": "/home/xzz/redis/src/lzf_d.c"
+    }, 
+    {
+        "command": "cc -std=c99 -pedantic -DREDIS_STATIC= -Wall -W -O2 -g -ggdb -I../deps/hiredis -I../deps/linenoise -I../deps/lua/src -DUSE_JEMALLOC -I../deps/jemalloc/include -c pqsort.c", 
+        "directory": "/home/xzz/redis/src", 
+        "file": "/home/xzz/redis/src/pqsort.c"
+    }, 
+    {
+        "command": "cc -std=c99 -pedantic -DREDIS_STATIC= -Wall -W -O2 -g -ggdb -I../deps/hiredis -I../deps/linenoise -I../deps/lua/src -DUSE_JEMALLOC -I../deps/jemalloc/include -c zipmap.c", 
+        "directory": "/home/xzz/redis/src", 
+        "file": "/home/xzz/redis/src/zipmap.c"
+    }, 
+    {
+        "command": "cc -std=c99 -pedantic -DREDIS_STATIC= -Wall -W -O2 -g -ggdb -I../deps/hiredis -I../deps/linenoise -I../deps/lua/src -DUSE_JEMALLOC -I../deps/jemalloc/include -c sha1.c", 
+        "directory": "/home/xzz/redis/src", 
+        "file": "/home/xzz/redis/src/sha1.c"
+    }, 
+    {
+        "command": "cc -std=c99 -pedantic -DREDIS_STATIC= -Wall -W -O2 -g -ggdb -I../deps/hiredis -I../deps/linenoise -I../deps/lua/src -DUSE_JEMALLOC -I../deps/jemalloc/include -c ziplist.c", 
+        "directory": "/home/xzz/redis/src", 
+        "file": "/home/xzz/redis/src/ziplist.c"
+    }, 
+    {
+        "command": "cc -std=c99 -pedantic -DREDIS_STATIC= -Wall -W -O2 -g -ggdb -I../deps/hiredis -I../deps/linenoise -I../deps/lua/src -DUSE_JEMALLOC -I../deps/jemalloc/include -c release.c", 
+        "directory": "/home/xzz/redis/src", 
+        "file": "/home/xzz/redis/src/release.c"
+    }, 
+    {
+        "command": "cc -std=c99 -pedantic -DREDIS_STATIC= -Wall -W -O2 -g -ggdb -I../deps/hiredis -I../deps/linenoise -I../deps/lua/src -DUSE_JEMALLOC -I../deps/jemalloc/include -c networking.c", 
+        "directory": "/home/xzz/redis/src", 
+        "file": "/home/xzz/redis/src/networking.c"
+    }, 
+    {
+        "command": "cc -std=c99 -pedantic -DREDIS_STATIC= -Wall -W -O2 -g -ggdb -I../deps/hiredis -I../deps/linenoise -I../deps/lua/src -DUSE_JEMALLOC -I../deps/jemalloc/include -c util.c", 
+        "directory": "/home/xzz/redis/src", 
+        "file": "/home/xzz/redis/src/util.c"
+    }, 
+    {
+        "command": "cc -std=c99 -pedantic -DREDIS_STATIC= -Wall -W -O2 -g -ggdb -I../deps/hiredis -I../deps/linenoise -I../deps/lua/src -DUSE_JEMALLOC -I../deps/jemalloc/include -c object.c", 
+        "directory": "/home/xzz/redis/src", 
+        "file": "/home/xzz/redis/src/object.c"
+    }, 
+    {
+        "command": "cc -std=c99 -pedantic -DREDIS_STATIC= -Wall -W -O2 -g -ggdb -I../deps/hiredis -I../deps/linenoise -I../deps/lua/src -DUSE_JEMALLOC -I../deps/jemalloc/include -c db.c", 
+        "directory": "/home/xzz/redis/src", 
+        "file": "/home/xzz/redis/src/db.c"
+    }, 
+    {
+        "command": "cc -std=c99 -pedantic -DREDIS_STATIC= -Wall -W -O2 -g -ggdb -I../deps/hiredis -I../deps/linenoise -I../deps/lua/src -DUSE_JEMALLOC -I../deps/jemalloc/include -c replication.c", 
+        "directory": "/home/xzz/redis/src", 
+        "file": "/home/xzz/redis/src/replication.c"
+    }, 
+    {
+        "command": "cc -std=c99 -pedantic -DREDIS_STATIC= -Wall -W -O2 -g -ggdb -I../deps/hiredis -I../deps/linenoise -I../deps/lua/src -DUSE_JEMALLOC -I../deps/jemalloc/include -c rdb.c", 
+        "directory": "/home/xzz/redis/src", 
+        "file": "/home/xzz/redis/src/rdb.c"
+    }, 
+    {
+        "command": "cc -std=c99 -pedantic -DREDIS_STATIC= -Wall -W -O2 -g -ggdb -I../deps/hiredis -I../deps/linenoise -I../deps/lua/src -DUSE_JEMALLOC -I../deps/jemalloc/include -c t_string.c", 
+        "directory": "/home/xzz/redis/src", 
+        "file": "/home/xzz/redis/src/t_string.c"
+    }, 
+    {
+        "command": "cc -std=c99 -pedantic -DREDIS_STATIC= -Wall -W -O2 -g -ggdb -I../deps/hiredis -I../deps/linenoise -I../deps/lua/src -DUSE_JEMALLOC -I../deps/jemalloc/include -c t_list.c", 
+        "directory": "/home/xzz/redis/src", 
+        "file": "/home/xzz/redis/src/t_list.c"
+    }, 
+    {
+        "command": "cc -std=c99 -pedantic -DREDIS_STATIC= -Wall -W -O2 -g -ggdb -I../deps/hiredis -I../deps/linenoise -I../deps/lua/src -DUSE_JEMALLOC -I../deps/jemalloc/include -c t_set.c", 
+        "directory": "/home/xzz/redis/src", 
+        "file": "/home/xzz/redis/src/t_set.c"
+    }, 
+    {
+        "command": "cc -std=c99 -pedantic -DREDIS_STATIC= -Wall -W -O2 -g -ggdb -I../deps/hiredis -I../deps/linenoise -I../deps/lua/src -DUSE_JEMALLOC -I../deps/jemalloc/include -c t_zset.c", 
+        "directory": "/home/xzz/redis/src", 
+        "file": "/home/xzz/redis/src/t_zset.c"
+    }, 
+    {
+        "command": "cc -std=c99 -pedantic -DREDIS_STATIC= -Wall -W -O2 -g -ggdb -I../deps/hiredis -I../deps/linenoise -I../deps/lua/src -DUSE_JEMALLOC -I../deps/jemalloc/include -c t_hash.c", 
+        "directory": "/home/xzz/redis/src", 
+        "file": "/home/xzz/redis/src/t_hash.c"
+    }, 
+    {
+        "command": "cc -std=c99 -pedantic -DREDIS_STATIC= -Wall -W -O2 -g -ggdb -I../deps/hiredis -I../deps/linenoise -I../deps/lua/src -DUSE_JEMALLOC -I../deps/jemalloc/include -c config.c", 
+        "directory": "/home/xzz/redis/src", 
+        "file": "/home/xzz/redis/src/config.c"
+    }, 
+    {
+        "command": "cc -std=c99 -pedantic -DREDIS_STATIC= -Wall -W -O2 -g -ggdb -I../deps/hiredis -I../deps/linenoise -I../deps/lua/src -DUSE_JEMALLOC -I../deps/jemalloc/include -c aof.c", 
+        "directory": "/home/xzz/redis/src", 
+        "file": "/home/xzz/redis/src/aof.c"
+    }, 
+    {
+        "command": "cc -std=c99 -pedantic -DREDIS_STATIC= -Wall -W -O2 -g -ggdb -I../deps/hiredis -I../deps/linenoise -I../deps/lua/src -DUSE_JEMALLOC -I../deps/jemalloc/include -c pubsub.c", 
+        "directory": "/home/xzz/redis/src", 
+        "file": "/home/xzz/redis/src/pubsub.c"
+    }, 
+    {
+        "command": "cc -std=c99 -pedantic -DREDIS_STATIC= -Wall -W -O2 -g -ggdb -I../deps/hiredis -I../deps/linenoise -I../deps/lua/src -DUSE_JEMALLOC -I../deps/jemalloc/include -c multi.c", 
+        "directory": "/home/xzz/redis/src", 
+        "file": "/home/xzz/redis/src/multi.c"
+    }, 
+    {
+        "command": "cc -std=c99 -pedantic -DREDIS_STATIC= -Wall -W -O2 -g -ggdb -I../deps/hiredis -I../deps/linenoise -I../deps/lua/src -DUSE_JEMALLOC -I../deps/jemalloc/include -c debug.c", 
+        "directory": "/home/xzz/redis/src", 
+        "file": "/home/xzz/redis/src/debug.c"
+    }, 
+    {
+        "command": "cc -std=c99 -pedantic -DREDIS_STATIC= -Wall -W -O2 -g -ggdb -I../deps/hiredis -I../deps/linenoise -I../deps/lua/src -DUSE_JEMALLOC -I../deps/jemalloc/include -c sort.c", 
+        "directory": "/home/xzz/redis/src", 
+        "file": "/home/xzz/redis/src/sort.c"
+    }, 
+    {
+        "command": "cc -std=c99 -pedantic -DREDIS_STATIC= -Wall -W -O2 -g -ggdb -I../deps/hiredis -I../deps/linenoise -I../deps/lua/src -DUSE_JEMALLOC -I../deps/jemalloc/include -c intset.c", 
+        "directory": "/home/xzz/redis/src", 
+        "file": "/home/xzz/redis/src/intset.c"
+    }, 
+    {
+        "command": "cc -std=c99 -pedantic -DREDIS_STATIC= -Wall -W -O2 -g -ggdb -I../deps/hiredis -I../deps/linenoise -I../deps/lua/src -DUSE_JEMALLOC -I../deps/jemalloc/include -c syncio.c", 
+        "directory": "/home/xzz/redis/src", 
+        "file": "/home/xzz/redis/src/syncio.c"
+    }, 
+    {
+        "command": "cc -std=c99 -pedantic -DREDIS_STATIC= -Wall -W -O2 -g -ggdb -I../deps/hiredis -I../deps/linenoise -I../deps/lua/src -DUSE_JEMALLOC -I../deps/jemalloc/include -c cluster.c", 
+        "directory": "/home/xzz/redis/src", 
+        "file": "/home/xzz/redis/src/cluster.c"
+    }, 
+    {
+        "command": "cc -std=c99 -pedantic -DREDIS_STATIC= -Wall -W -O2 -g -ggdb -I../deps/hiredis -I../deps/linenoise -I../deps/lua/src -DUSE_JEMALLOC -I../deps/jemalloc/include -c crc16.c", 
+        "directory": "/home/xzz/redis/src", 
+        "file": "/home/xzz/redis/src/crc16.c"
+    }, 
+    {
+        "command": "cc -std=c99 -pedantic -DREDIS_STATIC= -Wall -W -O2 -g -ggdb -I../deps/hiredis -I../deps/linenoise -I../deps/lua/src -DUSE_JEMALLOC -I../deps/jemalloc/include -c endianconv.c", 
+        "directory": "/home/xzz/redis/src", 
+        "file": "/home/xzz/redis/src/endianconv.c"
+    }, 
+    {
+        "command": "cc -std=c99 -pedantic -DREDIS_STATIC= -Wall -W -O2 -g -ggdb -I../deps/hiredis -I../deps/linenoise -I../deps/lua/src -DUSE_JEMALLOC -I../deps/jemalloc/include -c slowlog.c", 
+        "directory": "/home/xzz/redis/src", 
+        "file": "/home/xzz/redis/src/slowlog.c"
+    }, 
+    {
+        "command": "cc -std=c99 -pedantic -DREDIS_STATIC= -Wall -W -O2 -g -ggdb -I../deps/hiredis -I../deps/linenoise -I../deps/lua/src -DUSE_JEMALLOC -I../deps/jemalloc/include -c scripting.c", 
+        "directory": "/home/xzz/redis/src", 
+        "file": "/home/xzz/redis/src/scripting.c"
+    }, 
+    {
+        "command": "cc -std=c99 -pedantic -DREDIS_STATIC= -Wall -W -O2 -g -ggdb -I../deps/hiredis -I../deps/linenoise -I../deps/lua/src -DUSE_JEMALLOC -I../deps/jemalloc/include -c bio.c", 
+        "directory": "/home/xzz/redis/src", 
+        "file": "/home/xzz/redis/src/bio.c"
+    }, 
+    {
+        "command": "cc -std=c99 -pedantic -DREDIS_STATIC= -Wall -W -O2 -g -ggdb -I../deps/hiredis -I../deps/linenoise -I../deps/lua/src -DUSE_JEMALLOC -I../deps/jemalloc/include -c rio.c", 
+        "directory": "/home/xzz/redis/src", 
+        "file": "/home/xzz/redis/src/rio.c"
+    }, 
+    {
+        "command": "cc -std=c99 -pedantic -DREDIS_STATIC= -Wall -W -O2 -g -ggdb -I../deps/hiredis -I../deps/linenoise -I../deps/lua/src -DUSE_JEMALLOC -I../deps/jemalloc/include -c rand.c", 
+        "directory": "/home/xzz/redis/src", 
+        "file": "/home/xzz/redis/src/rand.c"
+    }, 
+    {
+        "command": "cc -std=c99 -pedantic -DREDIS_STATIC= -Wall -W -O2 -g -ggdb -I../deps/hiredis -I../deps/linenoise -I../deps/lua/src -DUSE_JEMALLOC -I../deps/jemalloc/include -c memtest.c", 
+        "directory": "/home/xzz/redis/src", 
+        "file": "/home/xzz/redis/src/memtest.c"
+    }, 
+    {
+        "command": "cc -std=c99 -pedantic -DREDIS_STATIC= -Wall -W -O2 -g -ggdb -I../deps/hiredis -I../deps/linenoise -I../deps/lua/src -DUSE_JEMALLOC -I../deps/jemalloc/include -c crc64.c", 
+        "directory": "/home/xzz/redis/src", 
+        "file": "/home/xzz/redis/src/crc64.c"
+    }, 
+    {
+        "command": "cc -std=c99 -pedantic -DREDIS_STATIC= -Wall -W -O2 -g -ggdb -I../deps/hiredis -I../deps/linenoise -I../deps/lua/src -DUSE_JEMALLOC -I../deps/jemalloc/include -c bitops.c", 
+        "directory": "/home/xzz/redis/src", 
+        "file": "/home/xzz/redis/src/bitops.c"
+    }, 
+    {
+        "command": "cc -std=c99 -pedantic -DREDIS_STATIC= -Wall -W -O2 -g -ggdb -I../deps/hiredis -I../deps/linenoise -I../deps/lua/src -DUSE_JEMALLOC -I../deps/jemalloc/include -c sentinel.c", 
+        "directory": "/home/xzz/redis/src", 
+        "file": "/home/xzz/redis/src/sentinel.c"
+    }, 
+    {
+        "command": "cc -std=c99 -pedantic -DREDIS_STATIC= -Wall -W -O2 -g -ggdb -I../deps/hiredis -I../deps/linenoise -I../deps/lua/src -DUSE_JEMALLOC -I../deps/jemalloc/include -c notify.c", 
+        "directory": "/home/xzz/redis/src", 
+        "file": "/home/xzz/redis/src/notify.c"
+    }, 
+    {
+        "command": "cc -std=c99 -pedantic -DREDIS_STATIC= -Wall -W -O2 -g -ggdb -I../deps/hiredis -I../deps/linenoise -I../deps/lua/src -DUSE_JEMALLOC -I../deps/jemalloc/include -c setproctitle.c", 
+        "directory": "/home/xzz/redis/src", 
+        "file": "/home/xzz/redis/src/setproctitle.c"
+    }, 
+    {
+        "command": "cc -std=c99 -pedantic -DREDIS_STATIC= -Wall -W -O2 -g -ggdb -I../deps/hiredis -I../deps/linenoise -I../deps/lua/src -DUSE_JEMALLOC -I../deps/jemalloc/include -c blocked.c", 
+        "directory": "/home/xzz/redis/src", 
+        "file": "/home/xzz/redis/src/blocked.c"
+    }, 
+    {
+        "command": "cc -std=c99 -pedantic -DREDIS_STATIC= -Wall -W -O2 -g -ggdb -I../deps/hiredis -I../deps/linenoise -I../deps/lua/src -DUSE_JEMALLOC -I../deps/jemalloc/include -c hyperloglog.c", 
+        "directory": "/home/xzz/redis/src", 
+        "file": "/home/xzz/redis/src/hyperloglog.c"
+    }, 
+    {
+        "command": "cc -std=c99 -pedantic -DREDIS_STATIC= -Wall -W -O2 -g -ggdb -I../deps/hiredis -I../deps/linenoise -I../deps/lua/src -DUSE_JEMALLOC -I../deps/jemalloc/include -c latency.c", 
+        "directory": "/home/xzz/redis/src", 
+        "file": "/home/xzz/redis/src/latency.c"
+    }, 
+    {
+        "command": "cc -std=c99 -pedantic -DREDIS_STATIC= -Wall -W -O2 -g -ggdb -I../deps/hiredis -I../deps/linenoise -I../deps/lua/src -DUSE_JEMALLOC -I../deps/jemalloc/include -c sparkline.c", 
+        "directory": "/home/xzz/redis/src", 
+        "file": "/home/xzz/redis/src/sparkline.c"
+    }, 
+    {
+        "command": "cc -std=c99 -pedantic -DREDIS_STATIC= -Wall -W -O2 -g -ggdb -I../deps/hiredis -I../deps/linenoise -I../deps/lua/src -DUSE_JEMALLOC -I../deps/jemalloc/include -c redis-cli.c", 
+        "directory": "/home/xzz/redis/src", 
+        "file": "/home/xzz/redis/src/redis-cli.c"
+    }, 
+    {
+        "command": "cc -std=c99 -pedantic -DREDIS_STATIC= -Wall -W -O2 -g -ggdb -I../deps/hiredis -I../deps/linenoise -I../deps/lua/src -DUSE_JEMALLOC -I../deps/jemalloc/include -c redis-benchmark.c", 
+        "directory": "/home/xzz/redis/src", 
+        "file": "/home/xzz/redis/src/redis-benchmark.c"
+    }, 
+    {
+        "command": "cc -std=c99 -pedantic -DREDIS_STATIC= -Wall -W -O2 -g -ggdb -I../deps/hiredis -I../deps/linenoise -I../deps/lua/src -DUSE_JEMALLOC -I../deps/jemalloc/include -c redis-check-dump.c", 
+        "directory": "/home/xzz/redis/src", 
+        "file": "/home/xzz/redis/src/redis-check-dump.c"
+    }, 
+    {
+        "command": "cc -std=c99 -pedantic -DREDIS_STATIC= -Wall -W -O2 -g -ggdb -I../deps/hiredis -I../deps/linenoise -I../deps/lua/src -DUSE_JEMALLOC -I../deps/jemalloc/include -c redis-check-aof.c", 
+        "directory": "/home/xzz/redis/src", 
+        "file": "/home/xzz/redis/src/redis-check-aof.c"
+    }
+]

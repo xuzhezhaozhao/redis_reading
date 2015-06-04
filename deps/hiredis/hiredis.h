@@ -129,12 +129,14 @@ typedef struct redisReader {
     char *buf; /* Read buffer */
     size_t pos; /* Buffer cursor */
     size_t len; /* Buffer length */
+	/* 默认为 16k */
     size_t maxbuf; /* Max length of unused buffer */
 
     redisReadTask rstack[9];
     int ridx; /* Index of current read task */
     void *reply; /* Temporary reply pointer */
 
+	/* 默认为 defaultFunctions */
     redisReplyObjectFunctions *fn;
     void *privdata;
 } redisReader;

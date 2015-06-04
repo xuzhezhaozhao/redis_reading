@@ -974,7 +974,7 @@ int clientsCronResizeQueryBuffer(redisClient *c) {
     return 0;
 }
 
-/* 在 serverCron 中会被调用 */
+/* 在 serverCron() 中会被调用 */
 void clientsCron(void) {
     /* Make sure to process at least 1/(server.hz*10) of clients per call.
      * Since this function is called server.hz times per second we are sure that
@@ -1007,7 +1007,7 @@ void clientsCron(void) {
 /* This function handles 'background' operations we are required to do
  * incrementally in Redis databases, such as active key expiring, resizing,
  * rehashing. */
-/* 在 serverCron 中会被调用 */
+/* 在 serverCron() 中会被调用 */
 void databasesCron(void) {
     /* Expire keys by random sampling. Not required for slaves
      * as master will synthesize DELs for us. */

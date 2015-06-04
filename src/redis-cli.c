@@ -77,12 +77,20 @@ int spectrum_palette_size;
 
 static redisContext *context;
 static struct config {
+	/* 默认为 127.0.0.1 */
     char *hostip;
+	/* 默认为 6379 */
     int hostport;
+	/* 初始 NULL */
     char *hostsocket;
+	/* 默认 1 */
     long repeat;
+	/* 初始 0 */
     long interval;
+	/* 初始 0 */
     int dbnum;
+
+	/* 以下初始 0 */
     int interactive;
     int shutdown;
     int monitor_mode;
@@ -96,21 +104,31 @@ static struct config {
     int cluster_reissue_command;
     int slave_mode;
     int pipe_mode;
+	/* 默认为 30s */
     int pipe_timeout;
     int getrdb_mode;
     int stat_mode;
     int scan_mode;
     int intrinsic_latency_mode;
+	/* 以上初始为 0 */
+
     int intrinsic_latency_duration;
+	/* 初始为 NULL */
     char *pattern;
     char *rdb_filename;
+	/* 初始为 0 */
     int bigkeys;
     int stdinarg; /* get last arg from stdin. (-x option) */
+	/* 初始为 NULL */
     char *auth;
+	/* !isatty(fileno(stdout)) && getenv("FAKETTY") == NULL 时为 OUTPUT_RAW, 
+	 * 否则为 OUTPUT_STANDARD */
     int output; /* output mode, see OUTPUT_* defines */
+	/* 初始为 "\n" */
     sds mb_delim;
     char prompt[128];
     char *eval;
+	/* 初始为 -1 */
     int last_cmd_type;
 } config;
 
@@ -190,6 +208,7 @@ typedef struct {
     int type;
     int argc;
     sds *argv;
+	/* 没有分割的 command name, 如 CLIENT KILL */
     sds full;
 
     /* Only used for help on commands */
@@ -213,6 +232,7 @@ static sds cliVersion(void) {
     return version;
 }
 
+/* 填充 helpEntries */
 static void cliInitHelp(void) {
     int commandslen = sizeof(commandHelp)/sizeof(struct commandHelp);
     int groupslen = sizeof(commandGroups)/sizeof(char*);
