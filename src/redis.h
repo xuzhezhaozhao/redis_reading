@@ -817,6 +817,7 @@ struct redisServer {
     long long stat_sync_partial_err;/* Number of unaccepted PSYNC requests. */
 	/* end, 以上初始为 0 */
 
+	/* 值为 slowlogEntry 类型, free method 为 slowlogFreeEntry() */
     list *slowlog;                  /* SLOWLOG list of commands */
     long long slowlog_entry_id;     /* SLOWLOG current entry ID */
 	/* 默认 10000 */
@@ -1113,6 +1114,7 @@ struct redisServer {
     redisClient *lua_client;   /* The "fake client" to query Redis from Lua */
 	/* 初始 NULL */
     redisClient *lua_caller;   /* The client running EVAL right now, or NULL */
+	/* SCRIPT EXISTS 命令就是查询这个 dict */
     dict *lua_scripts;         /* A dictionary of SHA1 -> Lua scripts */
 	/* 默认 5000 */
     mstime_t lua_time_limit;  /* Script timeout in milliseconds */
