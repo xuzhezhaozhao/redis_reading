@@ -421,7 +421,8 @@ int anetWrite(int fd, char *buf, int count)
     return totlen;
 }
 
-/* s: socket file descriptor */
+/* bind and listen on s
+ * s: socket file descriptor */
 static int anetListen(char *err, int s, struct sockaddr *sa, socklen_t len, int backlog) {
     if (bind(s,sa,len) == -1) {
         anetSetError(err, "bind: %s", strerror(errno));
@@ -447,7 +448,8 @@ static int anetV6Only(char *err, int s) {
     return ANET_OK;
 }
 
-/* 在初始化的调用中 bindaddr 为 NULL, bind 并 listen 端口 */
+/* 在初始化的调用中 bindaddr 为 NULL, bind 并 listen 端口,
+ * af: AF_INET6 or AF_INET */
 static int _anetTcpServer(char *err, int port, char *bindaddr, int af, int backlog)
 {
     int s, rv;
@@ -498,7 +500,7 @@ int anetTcpServer(char *err, int port, char *bindaddr, int backlog)
     return _anetTcpServer(err, port, bindaddr, AF_INET, backlog);
 }
 
-/* 监听端口 */
+/* 监听端口, err: error msg buffer */
 int anetTcp6Server(char *err, int port, char *bindaddr, int backlog)
 {
     return _anetTcpServer(err, port, bindaddr, AF_INET6, backlog);
