@@ -542,7 +542,7 @@ static int anetGenericAccept(char *err, int s, struct sockaddr *sa, socklen_t *l
     return fd;
 }
 
-/* *ip 返回 ip 地址, *port 返回端口号 */
+/* *ip 返回 ip 地址, *port 返回端口号, 返回 socket 描述符 */
 int anetTcpAccept(char *err, int s, char *ip, size_t ip_len, int *port) {
     int fd;
     struct sockaddr_storage sa;

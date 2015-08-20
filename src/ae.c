@@ -132,7 +132,7 @@ void aeStop(aeEventLoop *eventLoop) {
     eventLoop->stop = 1;
 }
 
-/* 往 eventLoop 中添加事件, proc 为回调函数, clientData 为 redisClient */
+/* 往 eventLoop 中添加事件, proc 为回调函数, clientData 可以为 redisClient */
 int aeCreateFileEvent(aeEventLoop *eventLoop, int fd, int mask,
         aeFileProc *proc, void *clientData)
 {
@@ -205,7 +205,7 @@ static void aeAddMillisecondsToNow(long long milliseconds, long *sec, long *ms) 
     *ms = when_ms;
 }
 
-/* 返回创建的 time event id */
+/* 时间会加入到 eventLoop 的 time event list 中, 返回创建的 time event id */
 /* server 启动的时候会创建 severCron() time event, 此时 milliseconds 为 1, 
  * clientData, finalizerProc 都为 NULL */
 long long aeCreateTimeEvent(aeEventLoop *eventLoop, long long milliseconds,
@@ -392,6 +392,7 @@ int aeProcessEvents(aeEventLoop *eventLoop, int flags)
         if (flags & AE_TIME_EVENTS && !(flags & AE_DONT_WAIT))
             shortest = aeSearchNearestTimer(eventLoop);
         if (shortest) {
+			/* 存在需要处理的时间事件 */
             long now_sec, now_ms;
 
             /* Calculate the time missing for the nearest
@@ -409,6 +410,7 @@ int aeProcessEvents(aeEventLoop *eventLoop, int flags)
             if (tvp->tv_sec < 0) tvp->tv_sec = 0;
             if (tvp->tv_usec < 0) tvp->tv_usec = 0;
         } else {
+			/* 不存在需要处理的时间事件 */
             /* If we have to check for events but need to return
              * ASAP because of AE_DONT_WAIT we need to set the timeout
              * to zero */

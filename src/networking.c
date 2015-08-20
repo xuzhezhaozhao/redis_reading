@@ -66,6 +66,7 @@ int listMatchObjects(void *a, void *b) {
 /* fd 为 -1 时看下面的注释 */
 /* fd 不为 -1 时为 accept server 时返回的 descriptor, 创建 client->fd READABLE
  * 事件, 回调函数为 readQueryFromClient() */
+/* 启动 redis 服务端时会调用一次该函数, 启动 redis 客户端程序时也会调用一次 */
 redisClient *createClient(int fd) {
     redisClient *c = zmalloc(sizeof(redisClient));
 
@@ -622,7 +623,7 @@ static void acceptCommonHandler(int fd, int flags) {
     c->flags |= flags;
 }
 
-/* 回调函数, client 客户端连接 sever */
+/* fd 为 server.ipfd[i], fd 可读时的回调函数, client 客户端连接 sever */
 void acceptTcpHandler(aeEventLoop *el, int fd, void *privdata, int mask) {
     int cport, cfd, max = MAX_ACCEPTS_PER_CALL;
     char cip[REDIS_IP_STR_LEN];
@@ -643,7 +644,7 @@ void acceptTcpHandler(aeEventLoop *el, int fd, void *privdata, int mask) {
     }
 }
 
-/* server 启动时会创建 fd READABLE 事件 */
+/* fd 为 server.sofd, fd 可读时的回调函数 */
 void acceptUnixHandler(aeEventLoop *el, int fd, void *privdata, int mask) {
     int cfd, max = MAX_ACCEPTS_PER_CALL;
     REDIS_NOTUSED(el);
@@ -1786,6 +1787,7 @@ int clientsArePaused(void) {
  * write, close sequence needed to serve a client.
  *
  * The function returns the total number of events processed. */
+/* 在 rdbloading 过程中每加载一定的数据量之后会执行一次 */
 int processEventsWhileBlocked(void) {
     int iterations = 4; /* See the function top-comment. */
     int count = 0;

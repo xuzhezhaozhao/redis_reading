@@ -469,6 +469,7 @@ void _redisPanic(char *msg, char *file, int line) {
     redisLog(REDIS_WARNING,"(forcing SIGSEGV in order to print the stack trace)");
 #endif
     redisLog(REDIS_WARNING,"------------------------------------------------");
+	/* 访问非法地址, 报内存错误 */
     *((char*)-1) = 'x';
 }
 

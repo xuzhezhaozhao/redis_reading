@@ -92,6 +92,7 @@ typedef struct aeTimeEvent {
 /* A fired event */
 typedef struct aeFiredEvent {
     int fd;
+	/* 可读, 可写标记 */
     int mask;
 } aeFiredEvent;
 
@@ -105,14 +106,15 @@ typedef struct aeEventLoop {
     long long timeEventNextId;
 	/* 最后一次处理 time events 的时间 */
     time_t lastTime;     /* Used to detect system clock skew */
+	/* 用文件描述符索引这个数组, 大小为 setsize */
     aeFileEvent *events; /* Registered events */
-	/* 就绪的事件 */
+	/* 就绪的事件, 大小为 setsize */
     aeFiredEvent *fired; /* Fired events */
 	/* 链表头结点(有效) */
     aeTimeEvent *timeEventHead;
 	/* 控制 ae stop */
     int stop;
-	/* 保存的类型可以为 aeApiState, 采用不同的实现时这个类型不一样 */
+	/* 采用 epoll 时类型为 aeApiState, 采用不同的实现时这个类型不一样 */
     void *apidata; /* This is used for polling API specific data */
 	/* 函数, 在 aeMain 中调用, 初始化设置为 redis.c beforeSleep() */
     aeBeforeSleepProc *beforesleep;

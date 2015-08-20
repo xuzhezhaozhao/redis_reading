@@ -411,6 +411,8 @@ typedef long long mstime_t; /* millisecond time type. */
  * The actual resolution depends on server.hz. */
 #define run_with_period(_ms_) if ((_ms_ <= 1000/server.hz) || !(server.cronloops%((_ms_)/(1000/server.hz))))
 
+/* 注意宏中 # 的用法, 在宏参数前加 # 将宏实参变为字符串 */
+/* _redisAssertWithInfo 等函数都在 debug.c 文件中定义 */
 /* We can print the stacktrace, so our assert is defined this way: */
 #define redisAssertWithInfo(_c,_o,_e) ((_e)?(void)0 : (_redisAssertWithInfo(_c,_o,#_e,__FILE__,__LINE__),_exit(1)))
 #define redisAssert(_e) ((_e)?(void)0 : (_redisAssert(#_e,__FILE__,__LINE__),_exit(1)))
@@ -793,7 +795,8 @@ struct redisServer {
     off_t loading_total_bytes;
     off_t loading_loaded_bytes;
     time_t loading_start_time;
-	/* 默认 2M */
+	/* 默认 2M, 加载了这么多数据后做点别的事, 
+	 * 参考 rdb.c rdbLoadProgressCallback() */
     off_t loading_process_events_interval_bytes;
     /* Fast pointers to often looked up command */
     struct redisCommand *delCommand, *multiCommand, *lpushCommand, *lpopCommand,
