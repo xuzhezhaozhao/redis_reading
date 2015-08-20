@@ -1685,7 +1685,8 @@ void checkTcpBacklogSettings(void) {
  * impossible to bind, or no bind addresses were specified in the server
  * configuration but the function is not able to bind * for at least
  * one of the IPv4 or IPv6 protocols. */
-/* 默认初始时 port 为 6379, count 为 0, 初始时传入的为 &server.ipfd_count */
+/* 默认初始时 port 为 6379, count 为 0, 初始时传入的为 &server.ipfd_count,
+* fds 为 server.ipfd */
 int listenToPort(int port, int *fds, int *count) {
     int j;
 
