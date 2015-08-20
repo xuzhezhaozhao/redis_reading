@@ -133,6 +133,10 @@ void aeStop(aeEventLoop *eventLoop) {
 }
 
 /* 往 eventLoop 中添加事件, proc 为回调函数, clientData 可以为 redisClient */
+/* 创建的事件有:
+ * 1. listen socket 可读, acceptTcpHandler
+ * 2. unix listen socket 可读, acceptUnixHandler
+ * 3. 连接客户端的套接字可读, readQueryFromClient */
 int aeCreateFileEvent(aeEventLoop *eventLoop, int fd, int mask,
         aeFileProc *proc, void *clientData)
 {

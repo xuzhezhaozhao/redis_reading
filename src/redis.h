@@ -247,7 +247,7 @@ typedef long long mstime_t; /* millisecond time type. */
 #define REDIS_MULTI (1<<3)   /* This client is in a MULTI context */
 #define REDIS_BLOCKED (1<<4) /* The client is waiting in a blocking operation */
 #define REDIS_DIRTY_CAS (1<<5) /* Watched keys modified. EXEC will fail. */
-/* 当用 CLIENT KILL 命令关闭自己时 client 会被置为这个状态 */
+/* 当用 CLIENT KILL 命令关闭自己时 client 会被置为这个状态, 或者是执行 quit 命令 */
 #define REDIS_CLOSE_AFTER_REPLY (1<<6) /* Close after writing entire reply. */
 #define REDIS_UNBLOCKED (1<<7) /* This client was unblocked and is stored in
                                   server.unblocked_clients */
@@ -551,7 +551,7 @@ typedef struct readyList {
 /* 在 networking.c 中 creatClient 创建 */
 typedef struct redisClient {
     uint64_t id;            /* Client incremental unique ID. */
-	/* client file descriptor, 创建 client 时传入的参数, <= 0 时为 
+	/* 服务器端 accept 返回时的 socket descriptor, 创建 client 时传入的参数, <= 0 时为 
 	 * fake client for AOF loading */
     int fd;
     redisDb *db;
@@ -765,12 +765,13 @@ struct redisServer {
 	/* 初始为 NULL */
     char *unixsocket;           /* UNIX socket path */
     mode_t unixsocketperm;      /* UNIX socket permission */
-	/* 初始时, 若没有指定任何任何配置文件, 则会 bind * (ipv4, ipv6), 此时
-	 * ipfd_count 为 2 */
+	/* 监听 socket 描述符, 监听 bindaddr[]:port, 初始时, 若没有指定任何任何
+	 * 配置文件, 则默认会 bind * (ipv4, ipv6), 此时 ipfd_count 为 2.
+	 * non-block, SO-REUSEADDR */
     int ipfd[REDIS_BINDADDR_MAX]; /* TCP socket file descriptors */
-	/* listenToPort() 初始化这个值 */
+	/* listenToPort() 初始化这个值, 监听 socket 数 */
     int ipfd_count;             /* Used slots in ipfd[] */
-	/* 初始为 -1 */
+	/* 初始为 -1, non-block */
     int sofd;                   /* Unix socket file descriptor */
     int cfd[REDIS_BINDADDR_MAX];/* Cluster bus listening socket */
     int cfd_count;              /* Used slots in cfd[] */

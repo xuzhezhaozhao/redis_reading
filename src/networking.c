@@ -63,10 +63,11 @@ int listMatchObjects(void *a, void *b) {
     return equalStringObjects(a,b);
 }
 
-/* fd 为 -1 时看下面的注释 */
-/* fd 不为 -1 时为 accept server 时返回的 descriptor, 创建 client->fd READABLE
- * 事件, 回调函数为 readQueryFromClient() */
-/* 启动 redis 服务端时会调用一次该函数, 启动 redis 客户端程序时也会调用一次 */
+/* fd 为 -1 时看下面的注释. 
+ * 
+ * fd 不为 -1 时为服务器端 accept 时返回的 descriptor, 创建 client->fd READABLE
+ * 事件, 回调函数为 readQueryFromClient(). 
+ * 启动 redis 服务端时会调用一次该函数, 启动 redis 客户端程序时也会调用一次 */
 redisClient *createClient(int fd) {
     redisClient *c = zmalloc(sizeof(redisClient));
 
@@ -594,7 +595,7 @@ void copyClientOutputBuffer(redisClient *dst, redisClient *src) {
 }
 
 #define MAX_ACCEPTS_PER_CALL 1000
-/* fd 为使用 accept 命令连接 server 获得的 descriptor, 创建 client 并连接 server */
+/* fd 为使用服务器端 accept 命令获得的 socket descriptor */
 static void acceptCommonHandler(int fd, int flags) {
     redisClient *c;
     if ((c = createClient(fd)) == NULL) {
@@ -623,7 +624,8 @@ static void acceptCommonHandler(int fd, int flags) {
     c->flags |= flags;
 }
 
-/* fd 为 server.ipfd[i], fd 可读时的回调函数, client 客户端连接 sever */
+/* fd 为 server.ipfd[i], fd 可读时(即客户端调用 connect 函数之后)的回调函数, 
+ * client 客户端连接 server */
 void acceptTcpHandler(aeEventLoop *el, int fd, void *privdata, int mask) {
     int cport, cfd, max = MAX_ACCEPTS_PER_CALL;
     char cip[REDIS_IP_STR_LEN];
@@ -928,6 +930,7 @@ void resetClient(redisClient *c) {
         c->flags &= (~REDIS_ASKING);
 }
 
+/* 一次从 buffer 中读取一行命令 */
 int processInlineBuffer(redisClient *c) {
     char *newline;
     int argc, j;
@@ -1140,7 +1143,7 @@ int processMultibulkBuffer(redisClient *c) {
     return REDIS_ERR;
 }
 
-/* readQueryFromClient() 最后调用 */
+/* readQueryFromClient() 最后调用, 执行客户端输入的命令 */
 void processInputBuffer(redisClient *c) {
     /* Keep processing while there is something in the input buffer */
     while(sdslen(c->querybuf)) {
@@ -1183,8 +1186,8 @@ void processInputBuffer(redisClient *c) {
     }
 }
 
-/* 回调函数, 当 client fd READABLE 时调用, fd READABLE 说明 server 给 client
- * reply 了 */
+/* 回调函数, 服务器端读取从客户端 redis-cli 键入的命令,
+ * privdata 为与该客户端连接的服务器端的 redisClient 结构 */
 void readQueryFromClient(aeEventLoop *el, int fd, void *privdata, int mask) {
     redisClient *c = (redisClient*) privdata;
     int nread, readlen;
@@ -1231,6 +1234,7 @@ void readQueryFromClient(aeEventLoop *el, int fd, void *privdata, int mask) {
         if (c->flags & REDIS_MASTER) c->reploff += nread;
         server.stat_net_input_bytes += nread;
     } else {
+		/* 执行到这说明 read 读取数据前被信号中断 */
         server.current_client = NULL;
         return;
     }
@@ -1751,7 +1755,7 @@ int clientsArePaused(void) {
     if (server.clients_paused &&
         server.clients_pause_end_time < server.mstime)
     {
-		/* pause 时间打了 */
+		/* pause 时间到了 */
 
         listNode *ln;
         listIter li;

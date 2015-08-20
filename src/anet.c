@@ -448,7 +448,7 @@ static int anetV6Only(char *err, int s) {
     return ANET_OK;
 }
 
-/* 在初始化的调用中 bindaddr 为 NULL, bind 并 listen 端口,
+/* 在初始化的调用中 bindaddr 为 NULL, bind and listen, 返回监听 socket
  * af: AF_INET6 or AF_INET */
 static int _anetTcpServer(char *err, int port, char *bindaddr, int af, int backlog)
 {
@@ -473,11 +473,13 @@ static int _anetTcpServer(char *err, int port, char *bindaddr, int af, int backl
         anetSetError(err, "%s", gai_strerror(rv));
         return ANET_ERR;
     }
+	/* 只会用第一个合法的 socket */
     for (p = servinfo; p != NULL; p = p->ai_next) {
         if ((s = socket(p->ai_family,p->ai_socktype,p->ai_protocol)) == -1)
             continue;
 
         if (af == AF_INET6 && anetV6Only(err,s) == ANET_ERR) goto error;
+		/* 参考 UNP(3rd edition v1 中文版) 一书 P166 页 */
         if (anetSetReuseAddr(err,s) == ANET_ERR) goto error;
         if (anetListen(err,s,p->ai_addr,p->ai_addrlen,backlog) == ANET_ERR) goto error;
         goto end;
@@ -494,20 +496,20 @@ end:
     return s;
 }
 
-/* 监听端口 */
+/* bind and listen, 返回监听 socket */
 int anetTcpServer(char *err, int port, char *bindaddr, int backlog)
 {
     return _anetTcpServer(err, port, bindaddr, AF_INET, backlog);
 }
 
-/* 监听端口, err: error msg buffer */
+/* 监听指定地址端口, err: error msg buffer, 返回监听 socket */
 int anetTcp6Server(char *err, int port, char *bindaddr, int backlog)
 {
     return _anetTcpServer(err, port, bindaddr, AF_INET6, backlog);
 }
 
 /* path: UNIX socket path
- * 返回 socket descriptor, 出错返回 ANET_ERR */
+ * bind and listen, 返回监听 socket descriptor, 出错返回 ANET_ERR */
 int anetUnixServer(char *err, char *path, mode_t perm, int backlog)
 {
     int s;
@@ -544,7 +546,7 @@ static int anetGenericAccept(char *err, int s, struct sockaddr *sa, socklen_t *l
     return fd;
 }
 
-/* *ip 返回 ip 地址, *port 返回端口号, 返回 socket 描述符 */
+/* s 为监听 socket, ip 返回对端 ip 地址, port 返回对端端口号, 返回 socket 描述符 */
 int anetTcpAccept(char *err, int s, char *ip, size_t ip_len, int *port) {
     int fd;
     struct sockaddr_storage sa;
