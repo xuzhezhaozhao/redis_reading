@@ -1,0 +1,8 @@
+-I ./deps/hiredis
+-I ./deps/linenoise
+-I ./deps/lua/src
+-I ./deps/jemalloc/include
+-std=c99
+-pedantic
+-Wall
+-W
