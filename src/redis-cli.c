@@ -501,6 +501,7 @@ static sds cliFormatReplyTTY(redisReply *r, char *prefix) {
     return out;
 }
 
+/* 返回格式化的 reply 字符串 */
 static sds cliFormatReplyRaw(redisReply *r) {
     sds out = sdsempty(), tmp;
     size_t i;
@@ -954,6 +955,7 @@ static char **convertToSds(int count, char** args) {
   return sds;
 }
 
+/* repeat 为命令执行的次数 */
 static int issueCommandRepeat(int argc, char **argv, long repeat) {
     while (1) {
         config.cluster_reissue_command = 0;

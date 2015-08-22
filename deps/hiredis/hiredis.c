@@ -679,6 +679,7 @@ static int intlen(int i) {
 }
 
 /* Helper that calculates the bulk length given a certain string length. */
+/* 用于网络传输所需的长度 */
 static size_t bulklen(size_t len) {
     return 1+intlen(len)+2+len+2;
 }
@@ -936,6 +937,8 @@ int redisFormatCommand(char **target, const char *format, ...) {
  * lengths. If the latter is set to NULL, strlen will be used to compute the
  * argument lengths.
  */
+/* 将命令转换为 redis 网络传输的格式, target 返回转换后的字符串, 函数返回其长度,
+ * 若内存不足返回 -1 */
 int redisFormatCommandArgv(char **target, int argc, const char **argv, const size_t *argvlen) {
     char *cmd = NULL; /* final command */
     int pos; /* position in final command */
@@ -943,6 +946,7 @@ int redisFormatCommandArgv(char **target, int argc, const char **argv, const siz
     int totlen, j;
 
     /* Calculate number of bytes needed for the command */
+	/* 1 个字节的标识符, '*' 标识 argc, '$' 标识 argv, 2 个字节的 '\r\n' */
     totlen = 1+intlen(argc)+2;
     for (j = 0; j < argc; j++) {
         len = argvlen ? argvlen[j] : strlen(argv[j]);
@@ -957,6 +961,7 @@ int redisFormatCommandArgv(char **target, int argc, const char **argv, const siz
     pos = sprintf(cmd,"*%d\r\n",argc);
     for (j = 0; j < argc; j++) {
         len = argvlen ? argvlen[j] : strlen(argv[j]);
+		/* 起始一个 size_t 标识长度 */
         pos += sprintf(cmd+pos,"$%zu\r\n",len);
         memcpy(cmd+pos,argv[j],len);
         pos += len;
@@ -1199,6 +1204,7 @@ int redisBufferWrite(redisContext *c, int *done) {
 
 /* Internal helper function to try and get a reply from the reader,
  * or set an error in the context otherwise. */
+/* 若 *reply 返回 NULL 则表示 reader 中没有数据了 */
 int redisGetReplyFromReader(redisContext *c, void **reply) {
     if (redisReaderGetReply(c->reader,reply) == REDIS_ERR) {
         __redisSetError(c,c->reader->err,c->reader->errstr);
@@ -1207,6 +1213,7 @@ int redisGetReplyFromReader(redisContext *c, void **reply) {
     return REDIS_OK;
 }
 
+/* 将命令传给服务器, 服务器执行命令并返回结果, 由 reply 返回 redisReply 结构  */
 int redisGetReply(redisContext *c, void **reply) {
     int wdone = 0;
     void *aux = NULL;
@@ -1295,6 +1302,8 @@ int redisAppendCommand(redisContext *c, const char *format, ...) {
     return ret;
 }
 
+/* 将符合 redis 传输协议的命令字符串(需对原始字符串转换)添加到 c 的 
+ * writer buffer 中 */
 int redisAppendCommandArgv(redisContext *c, int argc, const char **argv, const size_t *argvlen) {
     char *cmd;
     int len;

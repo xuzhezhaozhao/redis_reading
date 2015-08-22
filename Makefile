@@ -3,6 +3,7 @@
 default: all
 
 .DEFAULT:
+	cd deps/hiredis && $(MAKE) all
 	cd src && $(MAKE) $@
 
 install:

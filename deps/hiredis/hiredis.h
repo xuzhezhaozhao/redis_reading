@@ -105,6 +105,7 @@ typedef struct redisReply {
 } redisReply;
 
 typedef struct redisReadTask {
+	/* reply type */
     int type;
     int elements; /* number of elements in multibulk container */
     int idx; /* index in parent (array) object */
@@ -133,6 +134,7 @@ typedef struct redisReader {
     size_t maxbuf; /* Max length of unused buffer */
 
     redisReadTask rstack[9];
+	/* 初始为 -1 */
     int ridx; /* Index of current read task */
     void *reply; /* Temporary reply pointer */
 
@@ -170,6 +172,7 @@ typedef struct redisContext {
     char errstr[128]; /* String representation of error when applicable */
 	/* 此次客户端的 socket descriptor */
     int fd;
+	/* 此次连接的一些状态标记等 */
     int flags;
     char *obuf; /* Write buffer */
     redisReader *reader; /* Protocol reader */

@@ -175,6 +175,8 @@ static int redisSetTcpNoDelay(redisContext *c) {
 
 #define __MAX_MSEC (((LONG_MAX) - 999) / 1000)
 
+/* 当 connect 时 socket 设置为 nonblocking, 等待 socket 变为可写, 再检测 socket
+ * SO_ERROR 选项, 连接成功返回 REDIS_OK, 否则返回 REDIS_ERR */
 static int redisContextWaitReady(redisContext *c, const struct timeval *timeout) {
     struct pollfd   wfd[1];
     long msec;
@@ -310,6 +312,7 @@ static int _redisContextConnectTcp(redisContext *c, const char *addr, int port,
                 goto error;
             }
         }
+		/* 连接服务器端 */
         if (connect(s,p->ai_addr,p->ai_addrlen) == -1) {
             if (errno == EHOSTUNREACH) {
                 redisContextCloseFd(c);
