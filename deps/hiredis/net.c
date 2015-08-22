@@ -253,6 +253,7 @@ int redisContextSetTimeout(redisContext *c, const struct timeval tv) {
     return REDIS_OK;
 }
 
+/* source_addr 不为空则表示要 bind 这个地址后再 connect  */
 static int _redisContextConnectTcp(redisContext *c, const char *addr, int port,
                                    const struct timeval *timeout,
                                    const char *source_addr) {
@@ -272,6 +273,7 @@ static int _redisContextConnectTcp(redisContext *c, const char *addr, int port,
      * route could be: Use IPv6 if both addresses are available and there is IPv6
      * connectivity. */
     if ((rv = getaddrinfo(addr,_port,&hints,&servinfo)) != 0) {
+		/* no IPv4 address, try IPv6 address */
          hints.ai_family = AF_INET6;
          if ((rv = getaddrinfo(addr,_port,&hints,&servinfo)) != 0) {
             __redisSetError(c,REDIS_ERR_OTHER,gai_strerror(rv));

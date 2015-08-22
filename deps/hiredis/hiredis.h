@@ -168,6 +168,7 @@ int redisFormatCommandArgv(char **target, int argc, const char **argv, const siz
 typedef struct redisContext {
     int err; /* Error flags, 0 when there is no error */
     char errstr[128]; /* String representation of error when applicable */
+	/* 此次客户端的 socket descriptor */
     int fd;
     int flags;
     char *obuf; /* Write buffer */
