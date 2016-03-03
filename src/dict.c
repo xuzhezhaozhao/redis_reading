@@ -271,7 +271,7 @@ int dictRehash(dict *d, int n) {
             nextde = de->next;
             /* Get the index in the new hash table */
             h = dictHashKey(d, de->key) & d->ht[1].sizemask;
-			/* 链入到新的 hash 表相应位置 */
+			/* 链入到新的 hash 表相应位置, 插入到对应 bucket 头部 */
             de->next = d->ht[1].table[h];
             d->ht[1].table[h] = de;
             d->ht[0].used--;

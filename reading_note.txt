@@ -1,0 +1,27 @@
+
+特殊字符串数据类型: sds, 加入一个头部, 方便获取其长度, 也可以作 buffer 使用
+
+tcmalloc / zmalloc: 更高效的内存分配方案, 错误处理, 记录分配的内存大小
+
+自测试
+
+用宏实现小函数
+
+
+泛型数据结构的实现方法, 将函数放在结构中作为成员类型.
+
+增量 hash 方法, 一次只 rehash n 个元素(或 10*n 个空 buckets), 使用两个 hash 
+table 协助完成, 防止 rehash 的时间过长; 另外还可以通过比较每次增量 rehash 的时
+间戳来调整增量 rehash 的次数.
+
+将 rehash 过程分散在 查询, 更新等操作中.
+
+快速取模方法.
+
+
+? scan 命令的实现, 遍历整个 hash table
+
+sorted set (skiplist & dict) 的实现
+
+
+基数计数 hyperloglog, 参考 http://blog.codinglabs.org/articles/algorithms-for-cardinality-estimation-part-i.html
