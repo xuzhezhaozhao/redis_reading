@@ -34,3 +34,8 @@ redis 提供底数据结构：
 set: 不重复集，底层数据结构为 intset / dict
 
 
+http://redis.io/topics/persistence
+rdb: fork 子进程保存数据库，原子操作，将所有 db 的 key-value 写入文件. 在 
+serverCron 中调用 wait.
+
+aof:
