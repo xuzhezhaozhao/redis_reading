@@ -26,8 +26,8 @@ sorted set (skiplist & dict) 的实现
 
 基数计数 hyperloglog, 参考 http://blog.codinglabs.org/articles/algorithms-for-cardinality-estimation-part-i.html
 
-
 intset / ziplist: redis 自定义数据结构
+intset 数据考虑大端小端
 
 
 redis 提供底数据结构：
